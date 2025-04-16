@@ -2095,15 +2095,15 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
                       color: ''
                     });
                   }}
-                  className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+                  className={`px-4 py-2 rounded-lg text-sm text-medium transition-colors duration-200 ${darkMode ? 'bg-slate-200 hover:bg-slate-50 text-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-100'}`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                  className={`px-4 py-2 rounded-lg text-sm text-medium transition-colors duration-200 ${darkMode ? 'bg-slate-600 hover:bg-slate-700 text-white' : 'bg-slate-600 hover:bg-slate-700 text-white border border-slate-600'}`}
                 >
-                  Save Schedule
+                  Save
                 </button>
               </div>
             </form>
