@@ -1,0 +1,46 @@
+require('dotenv').config();
+
+module.exports = {
+  development: {
+    username: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    server: process.env.DB_SERVER,
+    dialect: 'mssql',
+    dialectOptions: {
+      options: {
+        encrypt: true,
+        trustServerCertificate: true,
+        instanceName: process.env.DB_INSTANCE
+      }
+    }
+  },
+  test: {
+    username: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    server: process.env.DB_SERVER,
+    dialect: 'mssql',
+    dialectOptions: {
+      options: {
+        encrypt: true,
+        trustServerCertificate: true,
+        instanceName: process.env.DB_INSTANCE
+      }
+    }
+  },
+  production: {
+    username: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    server: process.env.DB_SERVER,
+    dialect: 'mssql',
+    dialectOptions: {
+      options: {
+        encrypt: true,
+        trustServerCertificate: true,
+        instanceName: process.env.DB_INSTANCE
+      }
+    }
+  }
+};
