@@ -964,7 +964,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
       if (!contentElement) {
         throw new Error('PDF content element not found in the DOM');
       }
-
+      // test
       // Set up canvas options with improved settings for better compatibility
       const options = {
         scale: 2,
