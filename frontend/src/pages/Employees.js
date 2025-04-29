@@ -989,7 +989,7 @@ export default function Employees({ darkMode }) {
               </div>
 
 
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Note</label>
                 <textarea
                   value={editingId !== null ? editingData.Note || '' : newEmployeeData.Note}
@@ -1001,7 +1001,26 @@ export default function Employees({ darkMode }) {
                 />
               </div>
               
-              
+              <div>
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Pin Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{4}"
+                  maxLength={4}
+                  value={editingId !== null ? editingData.pinCode || '' : newEmployeeData.pinCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // remove non-digit characters
+                    if (value.length <= 4) {
+                      editingId !== null
+                        ? setEditingData({ ...editingData, pinCode: value })
+                        : setNewEmployeeData({ ...newEmployeeData, pinCode: value });
+                    }
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Type</label>
                 <select

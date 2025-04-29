@@ -187,6 +187,115 @@ export const getSections = async (companyId) => {
   }
 };
 
+// TimeRecords API
+export const getTimeRecords = async (companyId, startDate, endDate, outletId) => {
+  try {
+    // Validate input parameters
+    if (!companyId) {
+      console.error('Missing companyId parameter');
+      return {};
+    }
+    
+    if (!startDate || !endDate) {
+      console.error('Missing date parameters');
+      return {};
+    }
+    
+    // Format the URL with proper error handling
+    const id = companyId.id || companyId;
+    let url = `/companies/${id}/timerecords?startDate=${startDate}&endDate=${endDate}`;
+    if (outletId) {
+      url += `&outletId=${outletId.id || outletId}`;
+    }
+    
+    // Add timeout to prevent long-hanging requests
+    const response = await api.get(url, { 
+      timeout: 30000,
+      // Add retry logic for network issues
+      retry: 1,
+      retryDelay: 1000
+    });
+    
+    // Validate response structure
+    if (!response || typeof response !== 'object') {
+      console.warn('Invalid time records response format:', response);
+      return {};
+    }
+    
+    return response;
+  } catch (error) {
+    // Log detailed error information for debugging
+    console.error('Error fetching time records:', error);
+    if (error.response) {
+      // The request was made and the server responded with a status code outside of 2xx range
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      
+      // Provide more specific error messages based on status code
+      if (error.response.status === 500) {
+        console.error('Server error: The time records request failed due to a server issue. This might be related to invalid date formats or data processing errors.');
+      } else if (error.response.status === 400) {
+        console.error('Bad request: The time records request was invalid. Please check date formats and parameters.');
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received:', error.request);
+    }
+    
+    // Return empty object to prevent UI crashes
+    return {};
+  }
+};
+
+export const getScheduleComparison = async (companyId, startDate, endDate, outletId) => {
+  if (!companyId) {
+    console.error('Missing companyId parameter');
+    return {}; // Handle gracefully by returning an empty object
+  }
+
+  try {
+    console.log('companyId:', companyId);
+    console.log('startDate:', startDate);
+    console.log('endDate:', endDate);
+    console.log('outletId:', outletId);
+
+    // Use companyId directly if it's not an object
+    const id = companyId;
+
+    // Build URL with the necessary query parameters
+    let url = `/companies/${id}/timerecords/comparison?startDate=${startDate}&endDate=${endDate}`;
+    if (outletId) {
+      url += `&outletId=${outletId && (outletId.id || outletId)}`;
+    }
+
+    // Make the API request with a timeout
+    const response = await api.get(url, { timeout: 30000 });
+
+    // Check if response is in the expected format
+    if (!response || typeof response !== 'object') {
+      console.warn('Invalid schedule comparison response format:', response);
+      return {}; // Return empty object if the response format is invalid
+    }
+
+    return response; // Return the response data if everything is fine
+
+  } catch (error) {
+    console.error('Error fetching schedule comparison:', error);
+
+    // If there's a response with error, log that
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+    } else if (error.request) {
+      // If no response received
+      console.error('No response received:', error.request);
+    }
+
+    return {}; // Return an empty object in case of error
+  }
+};
+
+
 export const createSection = async (companyId, sectionData) => {
   try {
     const response = await api.post(`/companies/${companyId}/sections`, sectionData);
@@ -368,5 +477,17 @@ export const deleteSchedule = async (id) => {
   } catch (error) {
     console.error('Error deleting schedule:', error);
     throw error.response?.data?.message || error.message || 'Failed to delete schedule';
+  }
+};
+
+// TimeRecord API
+export const createTimeRecord = async (companyId, timeRecordData) => {
+  try {
+    const id = companyId.id || companyId;
+    const response = await api.post(`/companies/${id}/timerecords`, timeRecordData);
+    return response;
+  } catch (error) {
+    console.error('Error creating time record:', error);
+    throw error.response?.data?.message || error.message || 'Failed to create time record';
   }
 };

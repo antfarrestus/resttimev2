@@ -12,6 +12,7 @@ import Devices from './pages/Devices';
 import Sections from './pages/Sections';
 import Shifts from './pages/Shifts';
 import Employees from './pages/Employees';
+import Timesheet from './pages/Timesheet';
 import Schedule from './pages/Schedule';
 
 function AppContent() {
@@ -29,10 +30,10 @@ function AppContent() {
   const { user, logout } = useAuth();
   const { companies, selectedCompany, selectCompany } = useCompany();
   const navItems = user?.role === 'super_admin' 
-    ? ['Schedule', 'Companies', 'Outlets', 'Devices', 'Sections', 'Shifts', 'Employees']
+    ? ['Timesheet', 'Schedule', 'Companies', 'Outlets', 'Devices', 'Sections', 'Shifts', 'Employees']
     : user?.role === 'admin'
-    ? ['Schedule', 'Outlets', 'Devices', 'Sections', 'Shifts', 'Employees']
-    : ['Schedule', 'Sections', 'Shifts', 'Employees'];
+    ? ['Timesheet', 'Schedule', 'Outlets', 'Devices', 'Sections', 'Shifts', 'Employees']
+    : ['Timesheet', 'Schedule', 'Sections', 'Shifts', 'Employees'];
 
   const toggleTheme = () => {
     const newDarkMode = !darkMode;
@@ -210,10 +211,11 @@ function AppContent() {
           {currentPage === 'Sections' && <Sections darkMode={darkMode} />}
           {currentPage === 'Shifts' && <Shifts darkMode={darkMode} />}
           {currentPage === 'Employees' && <Employees darkMode={darkMode} />}
+          {currentPage === 'Timesheet' && <Timesheet darkMode={darkMode} />}
           {currentPage === 'Schedule' && <Schedule darkMode={darkMode} />}
           {currentPage !== 'Companies' && currentPage !== 'Outlets' && currentPage !== 'Devices' && 
            currentPage !== 'Sections' && currentPage !== 'Shifts' && currentPage !== 'Employees' && 
-           currentPage !== 'Schedule' && (
+           currentPage !== 'Schedule' && currentPage !== 'Timesheet' && (
             <div className={`${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
               <h1 className="text-2xl font-bold">Welcome to Dashboard</h1>
             </div>

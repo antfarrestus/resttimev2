@@ -1070,7 +1070,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
           setIsOutletDropdownOpen(false);
           setIsSectionDropdownOpen(false);
         }}
-        className={`w-64 p-2 pr-3 rounded-lg border flex justify-between items-center ${darkMode ? 'bg-slate-700 border-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+        className={`w-64 p-2 pr-3 rounded-lg border flex justify-between items-center ${darkMode ? 'bg-slate-700 border-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
       >
         <span className={selectedOutlet ? 'font-medium' : ''}>
     {selectedOutlet ? selectedOutlet.name : 'Select Outlet'}
@@ -1103,31 +1103,31 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   </div>
 
   {/* Week Navigation */}
-  <div className="flex gap-4 items-right">
+  <div className="flex gap-2 items-right">
   <button
       onClick={() => setIsSendModalOpen(true)}
-      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Send Schedule to Employees"
     >
       <PaperAirplaneIcon className="h-4 w-4 text-emerald-400" />
     </button>
   <button
       onClick={handleExportToPDF}
-      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Export Schedule to PDF"
     >
       <ArrowDownTrayIcon className="h-4 w-4 text-emerald-400" />
     </button>
     <button
       onClick={handleCopyPreviousWeek}
-      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Duplicate last week's Schedule"
     >
       <DocumentDuplicateIcon className="h-4 w-4 text-emerald-400" />
     </button>
     <button
       onClick={handlePreviousWeek}
-      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Previous Week"
     >
       <ChevronLeftIcon className="h-4 w-4 text-slate-400" />
@@ -1137,7 +1137,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
     </span>
     <button
       onClick={handleNextWeek}
-      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+      className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Next Week"
     >
       <ChevronRightIcon className="h-4 w-4 text-slate-400" />
@@ -1159,7 +1159,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
       <div className="relative" data-dropdown="sort">
         <button
           onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-          className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+          className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
           title="Sort by"
         >
           <ArrowsUpDownIcon className="h-4 w-4 text-slate-400" />
@@ -1222,7 +1222,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
           setIsOutletDropdownOpen(!isOutletDropdownOpen);
           setIsSectionDropdownOpen(false);
         }}
-        className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+        className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
         title="Filter by Outlet"
       >
         <FunnelIcon className="h-4 w-4 text-purple-500" />
@@ -1269,7 +1269,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
           setIsSectionDropdownOpen(!isSectionDropdownOpen);
           setIsOutletDropdownOpen(false);
         }}
-        className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'} ${selectedFilterSections.length > 0 ? 'ring-2 ring-emerald-500' : ''}`}
+        className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'} ${selectedFilterSections.length > 0 ? 'ring-2 ring-emerald-500' : ''}`}
         title="Filter by Section"
       >
         <AdjustmentsHorizontalIcon className="h-4 w-4 text-blue-500" />
@@ -1331,7 +1331,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
     className={`flex items-center justify-center p-2 rounded-lg border font-normal ${
       darkMode
         ? "bg-slate-700 border-slate-700 hover:bg-slate-600 text-slate-50"
-        : "bg-white hover:bg-slate-50 border border-slate-300 text-slate-700"
+        : "bg-white hover:bg-slate-50 border border-slate-200 text-slate-700"
     }`}
     title="Search employees"
   >
@@ -1343,7 +1343,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
       className={`absolute top-0 left-0 z-50 w-64 h-10 rounded-lg shadow-lg flex items-center border ${
         darkMode
           ? "bg-slate-700 border-slate-600 text-slate-200"
-          : "bg-white border-slate-300 text-slate-700"
+          : "bg-white border-slate-200 text-slate-700"
       }`}
     >
       <MagnifyingGlassIcon className="ml-2 h-4 w-4 text-slate-500" />
@@ -1379,7 +1379,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
           fetchData();
         }
       }}
-      className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+      className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Create pre-defined shifts for all employees"
     >
       <PlusIcon className="h-4 w-4 text-emerald-500" />
@@ -1391,7 +1391,7 @@ const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
       onClick={() => setShowOnlyScheduled(!showOnlyScheduled)}
       className={`p-2 rounded-lg flex items-center gap-1 ${darkMode ? 
         showOnlyScheduled ? 'bg-slate-600 hover:bg-slate-500 text-slate-200' : 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 
-        showOnlyScheduled ? 'bg-slate-100 hover:bg-white text-slate-700 border border-slate-300' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'}`}
+        showOnlyScheduled ? 'bg-slate-100 hover:bg-white text-slate-700 border border-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
       title="Show/Hide Employees not in the Schedule"
     >
       {showOnlyScheduled ? 

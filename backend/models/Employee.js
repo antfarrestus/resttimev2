@@ -137,6 +137,10 @@ const Employee = sequelize.define('Employee', {
       model: 'Shifts',
       key: 'id'
     }
+  },
+  pinCode: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   }
 }, {
   timestamps: true

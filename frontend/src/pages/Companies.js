@@ -630,7 +630,7 @@ export default function Companies({ darkMode }) {
 
       {/* Create Company Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4 dark:text-slate-100">Create New Company</h2>
             <form onSubmit={handleCreateCompany}>

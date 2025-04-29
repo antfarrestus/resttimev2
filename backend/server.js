@@ -10,6 +10,7 @@ const models = require('./models');
 const authRoutes = require('./routes/auth.routes');
 const companyRoutes = require('./routes/company.routes');
 const scheduleRoutes = require('./routes/schedule.routes');
+const timeRecordRoutes = require('./routes/timeRecord.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -44,6 +45,9 @@ app.get('/api', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api', scheduleRoutes);
+
+// Register timeRecord routes
+app.use('/api/companies/:companyId/timerecords', timeRecordRoutes);
 
 // Test route
 app.get('/', (req, res) => {
