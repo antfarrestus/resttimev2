@@ -352,7 +352,7 @@ export default function Outlets({ darkMode }) {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Column - Outlet Name and Grace Periods */}
                 <div>
-                  <div className="mb-4">
+                  <div className="mb-4 mt-7">
                     <label htmlFor="outletName" className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">
                       Outlet Name
                     </label>
@@ -361,343 +361,236 @@ export default function Outlets({ darkMode }) {
                       id="outletName"
                       value={newOutletData.name}
                       onChange={(e) => setNewOutletData({...newOutletData, name: e.target.value})}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                       placeholder="Enter outlet name"
                       required
                     />
                   </div>
-                  <div className="h-8"></div>
+                  <div className="h-5"></div>
 
                   {/* Grace Periods Section */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-medium mb-3 dark:text-slate-300 text-slate-700">Grace Periods</h3>
-                    <div className="h-4"></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label
-                          htmlFor="earlyClockInGrace"
-                          className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1"
-                        >
-                          Early Clock-In
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            id="earlyClockInGrace"
-                            value={newOutletData.earlyClockInGrace}
-                            onChange={(e) =>
-                              setNewOutletData({
-                                ...newOutletData,
-                                earlyClockInGrace: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pr-12 px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            placeholder="Enter minutes"
-                            min="0"
-                          />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
-                            mins
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="earlyClockOutGrace"
-                          className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1"
-                        >
-                          Early Clock-Out
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            id="earlyClockOutGrace"
-                            value={newOutletData.earlyClockOutGrace}
-                            onChange={(e) =>
-                              setNewOutletData({
-                                ...newOutletData,
-                                earlyClockOutGrace: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pr-12 px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            placeholder="Enter minutes"
-                            min="0"
-                          />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
-                            mins
-                          </span>
-                        </div>
-                      </div>
+<div className="mb-4">
+  <div className="mb-4 bg-white dark:bg-slate-700/30 rounded-lg">
+    <h3 className="text-base mb-3 uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400">
+      Grace Periods
+    </h3>
 
-                      <div>
-                        <label
-                          htmlFor="slightlyLateClockInGrace"
-                          className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1"
-                        >
-                          Slightly Late Clock-In
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            id="slightlyLateClockInGrace"
-                            value={newOutletData.slightlyLateClockInGrace}
-                            onChange={(e) =>
-                              setNewOutletData({
-                                ...newOutletData,
-                                slightlyLateClockInGrace: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pr-12 px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            placeholder="Enter minutes"
-                            min="0"
-                          />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
-                            mins
-                          </span>
-                        </div>
-                      </div>
+    {/* Grace Periods Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {[
+        { id: 'earlyClockInGrace', label: 'Early Clock-In' },
+        { id: 'earlyClockOutGrace', label: 'Early Clock-Out' },
+        { id: 'slightlyLateClockInGrace', label: 'Slightly Late Clock-In' },
+        { id: 'slightlyLateClockOutGrace', label: 'Slightly Late Clock-Out' },
+        { id: 'lateClockInGrace', label: 'Late Clock-In' },
+        { id: 'lateClockOutGrace', label: 'Late Clock-Out' },
+      ].map(({ id, label }) => (
+        <div
+          key={id}
+          className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow"
+        >
+          <label htmlFor={id} className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+            {label}
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              id={id}
+              value={newOutletData[id]}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (/^\d*$/.test(value)) {
+                  setNewOutletData({
+                    ...newOutletData,
+                    [id]: value,
+                  });
+                }
+              }}
+              className="w-full pr-12 px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              placeholder="Enter minutes"
+              min="0"
+            />
+            <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
+              mins
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
 
-                      <div>
-                        <label
-                          htmlFor="slightlyLateClockOutGrace"
-                          className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1"
-                        >
-                          Slightly Late Clock-Out
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            id="slightlyLateClockOutGrace"
-                            value={newOutletData.slightlyLateClockOutGrace}
-                            onChange={(e) =>
-                              setNewOutletData({
-                                ...newOutletData,
-                                slightlyLateClockOutGrace: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pr-12 px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            placeholder="Enter minutes"
-                            min="0"
-                          />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
-                            mins
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="lateClockInGrace"
-                          className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1"
-                        >
-                          Late Clock-In
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            id="lateClockInGrace"
-                            value={newOutletData.lateClockInGrace}
-                            onChange={(e) =>
-                              setNewOutletData({
-                                ...newOutletData,
-                                lateClockInGrace: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pr-12 px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            placeholder="Enter minutes"
-                            min="0"
-                          />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
-                            mins
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="lateClockOutGrace"
-                          className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1"
-                        >
-                          Late Clock-Out
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            id="lateClockOutGrace"
-                            value={newOutletData.lateClockOutGrace}
-                            onChange={(e) =>
-                              setNewOutletData({
-                                ...newOutletData,
-                                lateClockOutGrace: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full pr-12 px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            placeholder="Enter minutes"
-                            min="0"
-                          />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400 pointer-events-none">
-                            mins
-                          </span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
                 </div>
                 
                 {/* Right Column - Daily Rates */}
                 <div>
                   {/* Daily Rates Section */}
                   <div className="mb-6">
-               
-                
-                {/* Monday */}
-                  <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Monday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="mondayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="mondayShiftRate"
-                      step="0.01"
-                      value={newOutletData.mondayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          mondayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="mondayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="mondayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.mondayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          mondayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Tuesday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Tuesday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="tuesdayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="tuesdayShiftRate"
-                      step="0.01"
-                      value={newOutletData.tuesdayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          tuesdayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="tuesdayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="tuesdayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.tuesdayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          tuesdayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Wednesday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Wednesday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="wednesdayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="wednesdayShiftRate"
-                      step="0.01"
-                      value={newOutletData.wednesdayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          wednesdayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="wednesdayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="wednesdayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.wednesdayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          wednesdayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Thursday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Thursday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="thursdayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="thursdayShiftRate"
-                      step="0.01"
+
+                    
+                    {/* Weekdays Card */}
+                    <div className="mb-4 p-4 bg-white dark:bg-slate-700/30 rounded-lg">
+                      <h4 className="text-base mb-3 uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400">Daily rates</h4>
+                      
+                      {/* Weekday Rates Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Monday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Monday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="mondayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="mondayShiftRate"
+                                step="0.10"
+                                value={newOutletData.mondayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    mondayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="mondayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="mondayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.mondayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    mondayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Tuesday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Tuesday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="tuesdayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="tuesdayShiftRate"
+                                step="0.10"
+                                value={newOutletData.tuesdayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    tuesdayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="tuesdayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="tuesdayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.tuesdayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    tuesdayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Wednesday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Wednesday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="wednesdayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="wednesdayShiftRate"
+                                step="0.10"
+                                value={newOutletData.wednesdayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    wednesdayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="wednesdayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="wednesdayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.wednesdayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    wednesdayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Thursday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Thursday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="thursdayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="thursdayShiftRate"
+                                step="0.10"
                       value={newOutletData.thursdayShiftRate}
                       onChange={(e) =>
                         setNewOutletData({
@@ -705,213 +598,221 @@ export default function Outlets({ darkMode }) {
                           thursdayShiftRate: parseFloat(e.target.value) || 0,
                         })
                       }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
                       min="0"
                     />
+                            </div>
+                            <div>
+                              <label htmlFor="thursdayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="thursdayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.thursdayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    thursdayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Friday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Friday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="fridayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="fridayShiftRate"
+                                step="0.10"
+                                value={newOutletData.fridayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    fridayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="fridayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="fridayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.fridayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    fridayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        {/* Saturday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Saturday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="saturdayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="saturdayShiftRate"
+                                step="0.10"
+                                value={newOutletData.saturdayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    saturdayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="saturdayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="saturdayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.saturdayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    saturdayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Sunday */}
+                        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-700">Sunday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="sundayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="sundayShiftRate"
+                                step="0.10"
+                                value={newOutletData.sundayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    sundayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="sundayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-500 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="sundayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.sundayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    sundayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Holiday */}
+                        <div className="p-2 bg-slate-600 dark:bg-slate-800/50 rounded shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium dark:text-slate-300 text-slate-100">Holiday</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="holidayShiftRate" className="block text-xs font-medium dark:text-slate-400 text-slate-300 mb-1">
+                                Shift Rate
+                              </label>
+                              <input
+                                type="number"
+                                id="holidayShiftRate"
+                                step="0.10"
+                                value={newOutletData.holidayShiftRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    holidayShiftRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="holidayOvertimeRate" className="block text-xs font-medium dark:text-slate-400 text-slate-300 mb-1">
+                                Overtime
+                              </label>
+                              <input
+                                type="number"
+                                id="holidayOvertimeRate"
+                                step="0.10"
+                                value={newOutletData.holidayOvertimeRate}
+                                onChange={(e) =>
+                                  setNewOutletData({
+                                    ...newOutletData,
+                                    holidayOvertimeRate: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="remove-spinner w-full px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="thursdayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="thursdayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.thursdayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          thursdayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Friday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Friday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="fridayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="fridayShiftRate"
-                      step="0.01"
-                      value={newOutletData.fridayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          fridayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="fridayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="fridayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.fridayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          fridayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Saturday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Saturday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="saturdayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="saturdayShiftRate"
-                      step="0.01"
-                      value={newOutletData.saturdayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          saturdayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="saturdayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="saturdayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.saturdayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          saturdayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Sunday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Sunday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="sundayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="sundayShiftRate"
-                      step="0.01"
-                      value={newOutletData.sundayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          sundayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="sundayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="sundayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.sundayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          sundayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                {/* Holiday */}
-                <div className="mb-4 flex items-center gap-6">
-                    <div className="w-24 text-md font-medium dark:text-slate-400 text-slate-600">
-                    Holiday
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="holidayShiftRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Shift Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="holidayShiftRate"
-                      step="0.01"
-                      value={newOutletData.holidayShiftRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          holidayShiftRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="holidayOvertimeRate" className="text-xs font-medium dark:text-slate-300 text-slate-700 mb-1">
-                      Overtime Rate
-                    </label>
-                    <input
-                      type="number"
-                      id="holidayOvertimeRate"
-                      step="0.01"
-                      value={newOutletData.holidayOvertimeRate}
-                      onChange={(e) =>
-                        setNewOutletData({
-                          ...newOutletData,
-                          holidayOvertimeRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      min="0"
-                    />
-                  </div>
-                </div>
-
-
-              </div>
               </div>
               </div>
               <div className="flex justify-end space-x-3 mt-4">

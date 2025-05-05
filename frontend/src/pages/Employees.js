@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { PlusIcon, PencilSquareIcon, TrashIcon, DocumentDuplicateIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon, EyeSlashIcon, ChevronDownIcon, ChevronUpIcon, DocumentDuplicateIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { Menu } from '@headlessui/react';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getSections, getOutlets, getShifts } from '../services/api';
 import { useCompany } from '../contexts/CompanyContext';
@@ -25,7 +25,10 @@ export default function Employees({ darkMode }) {
     outlet: ''
   });
   const [activeFilter, setActiveFilter] = useState(null);
-// test
+  const [showPin, setShowPin] = useState(false);
+  const [showAllPins, setShowAllPins] = useState(false);
+  const [isEmploymentExpanded, setIsEmploymentExpanded] = useState(true);
+
   const sortData = (data, key) => {
     if (!key) return data;
 
@@ -84,45 +87,45 @@ export default function Employees({ darkMode }) {
   };
 
   const FilterDropdown = ({ type, values }) => {
-  const dropdownRef = useRef(null);
+    const dropdownRef = useRef(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setActiveFilter(null);
-      }
-    };
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setActiveFilter(null);
+        }
+      };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
 
-  return (
-    <div ref={dropdownRef} className="fixed z-[100] mt-2 w-48 rounded-md shadow-lg filter-dropdown" style={{ top: 'auto' }}>
-      <div className={`rounded-md ring-1 ring-black ring-opacity-5 ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
-        <div className="py-1">
-          <button
-            onClick={() => handleFilterChange(type, '')}
-            className={`block w-full px-4 py-2 text-sm text-left ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-100'}`}
-          >
-            All
-          </button>
-          {values.map((value) => (
+    return (
+      <div ref={dropdownRef} className="fixed z-[100] mt-2 w-48 rounded-md shadow-lg filter-dropdown" style={{ top: 'auto' }}>
+        <div className={`rounded-md ring-1 ring-black ring-opacity-5 ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
+          <div className="py-1">
             <button
-              key={value}
-              onClick={() => handleFilterChange(type, value)}
+              onClick={() => handleFilterChange(type, '')}
               className={`block w-full px-4 py-2 text-sm text-left ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-100'}`}
             >
-              {value}
+              All
             </button>
-          ))}
+            {values.map((value) => (
+              <button
+                key={value}
+                onClick={() => handleFilterChange(type, value)}
+                className={`block w-full px-4 py-2 text-sm text-left ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-100'}`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 
   const currentSections = sections.filter(section => section.active);
@@ -155,7 +158,12 @@ export default function Employees({ darkMode }) {
     thursdayShiftId: '',
     fridayShiftId: '',
     saturdayShiftId: '',
-    sundayShiftId: ''
+    sundayShiftId: '',
+    pinCode: '',
+    address: '',
+    emergencyName: '',
+    emergencyNumber: '',
+    image: ''
   });
 
   // Initialize with the selected company from context
@@ -170,7 +178,7 @@ export default function Employees({ darkMode }) {
     const handleCompanyChange = (e) => {
       setLocalSelectedCompany(e.detail);
     };
-    
+
     window.addEventListener('companyChanged', handleCompanyChange);
 
     return () => {
@@ -196,9 +204,9 @@ export default function Employees({ darkMode }) {
       setAllEmployees(data);
 
       // Check if any employee has shifts assigned
-      const hasShifts = data.some(emp => 
-        emp.mondayShiftId || emp.tuesdayShiftId || emp.wednesdayShiftId || 
-        emp.thursdayShiftId || emp.fridayShiftId || emp.saturdayShiftId || 
+      const hasShifts = data.some(emp =>
+        emp.mondayShiftId || emp.tuesdayShiftId || emp.wednesdayShiftId ||
+        emp.thursdayShiftId || emp.fridayShiftId || emp.saturdayShiftId ||
         emp.sundayShiftId
       );
 
@@ -292,7 +300,12 @@ export default function Employees({ darkMode }) {
       thursdayShiftId: '',
       fridayShiftId: '',
       saturdayShiftId: '',
-      sundayShiftId: ''
+      sundayShiftId: '',
+      pinCode: '',
+      address: '',
+      emergencyName: '',
+      emergencyNumber: '',
+      image: ''
     });
     setIsModalOpen(false);
   };
@@ -340,7 +353,7 @@ export default function Employees({ darkMode }) {
         hasAlerts: editingData.hasAlerts || false,
         hasPayroll: editingData.hasPayroll || false
       });
-      
+
       const result = await updateEmployee(activeCompany, editingId, {
         ...editingData,
         sectionId: parseInt(editingData.sectionId),
@@ -351,7 +364,7 @@ export default function Employees({ darkMode }) {
         hasAlerts: editingData.hasAlerts || false,
         hasPayroll: editingData.hasPayroll || false
       });
-      
+
       console.log('Update result:', result);
       await fetchEmployees(activeCompany);
       setEditingId(null);
@@ -422,36 +435,66 @@ export default function Employees({ darkMode }) {
       thursdayShiftId: cloneData.thursdayShiftId || '',
       fridayShiftId: cloneData.fridayShiftId || '',
       saturdayShiftId: cloneData.saturdayShiftId || '',
-      sundayShiftId: cloneData.sundayShiftId || ''
+      sundayShiftId: cloneData.sundayShiftId || '',
+      pinCode: cloneData.pinCode || '',
+      address: cloneData.address || '',
+      emergencyName: cloneData.emergencyName || '',
+      emergencyNumber: cloneData.emergencyNumber || '',
+      image: cloneData.image || ''
     });
     setIsModalOpen(true);
   };
 
-  const [visibleColumns, setVisibleColumns] = useState({
-    employeeNumber: true,
-    name: true,
-    type: true,
-    schedule: true,
-    section: true,
-    outlet: true,
+  // Initialize visibleColumns from sessionStorage or use defaults
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    // Try to get saved preferences from sessionStorage
+    const savedColumns = sessionStorage.getItem('employeeVisibleColumns');
+    if (savedColumns) {
+      try {
+        return JSON.parse(savedColumns);
+      } catch (error) {
+        console.error('Error parsing saved column preferences:', error);
+      }
+    }
 
-    mobile: false,
-    email: false,
-    arcNumber: false,
-    payrollNumber: false,
-    hourlyPay: false,
-    monthlyPay: false,
-    monthlyHours: false,
-    status: true,
-    actions: true
+    // Default values if nothing in sessionStorage
+    return {
+      image: true,
+      employeeNumber: true,
+      name: true,
+      pinCode: false,
+      type: true,
+      schedule: true,
+      section: true,
+      outlet: true,
+      mobile: false,
+      email: false,
+      arcNumber: false,
+      payrollNumber: false,
+      hourlyPay: false,
+      monthlyPay: false,
+      monthlyHours: false,
+      status: true,
+      actions: true
+    };
   });
 
   const toggleColumnVisibility = (columnKey) => {
-    setVisibleColumns(prev => ({
-      ...prev,
-      [columnKey]: !prev[columnKey]
-    }));
+    setVisibleColumns(prev => {
+      const newColumns = {
+        ...prev,
+        [columnKey]: !prev[columnKey]
+      };
+      // Save to sessionStorage whenever columns change
+      sessionStorage.setItem('employeeVisibleColumns', JSON.stringify(newColumns));
+      return newColumns;
+    });
   };
+
+  // Save to sessionStorage when columns are updated via other methods (like select all)
+  useEffect(() => {
+    sessionStorage.setItem('employeeVisibleColumns', JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
 
   const activeCompany = localSelectedCompany || selectedCompany;
   if (!activeCompany) {
@@ -578,13 +621,34 @@ export default function Employees({ darkMode }) {
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700/50">
           <thead className="bg-slate-50 dark:bg-slate-800/50">
             <tr>
-
+              {visibleColumns.image && (
+                <th className="px-6 py-3 text-center text-xs font-medium dark:text-slate-400 text-slate-500 uppercase tracking-wider">Photo</th>
+              )}
               {visibleColumns.employeeNumber && (
                 <th onClick={() => handleSort('employeeNumber')} className="px-6 py-3 text-left text-xs font-medium dark:text-slate-400 text-slate-500 uppercase tracking-wider cursor-pointer">Number {sortConfig.key === 'employeeNumber' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
               )}
               {visibleColumns.name && (
                 <th onClick={() => handleSort('name')} className="px-6 py-3 text-left text-xs font-medium dark:text-slate-400 text-slate-500 uppercase tracking-wider cursor-pointer">Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
               )}
+              {visibleColumns.pinCode && (
+  <th className="px-6 py-3 text-center text-xs font-medium dark:text-slate-400 text-slate-500 uppercase">
+    <div className="flex items-center justify-center gap-1">
+      Pin Code
+      <button
+        onClick={() => setShowAllPins(!showAllPins)}
+        className="focus:outline-none"
+        type="button"
+      >
+        {showAllPins ? (
+          <EyeSlashIcon className="w-4 h-4 text-slate-500" />
+        ) : (
+          <EyeIcon className="w-4 h-4 text-slate-500" />
+        )}
+      </button>
+    </div>
+  </th>
+)}
+
               {visibleColumns.type && (
                 <th className="px-6 py-3 text-left text-xs font-medium dark:text-slate-400 text-slate-500 uppercase tracking-wider cursor-pointer relative">
                   <button
@@ -667,7 +731,7 @@ export default function Employees({ darkMode }) {
               .filter(employee => {
                 const matchesSearch = searchTerm
                   ? (employee.firstName + ' ' + (employee.lastName || '')).toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (employee.employeeNumber && employee.employeeNumber.toString().includes(searchTerm))
+                  (employee.employeeNumber && employee.employeeNumber.toString().includes(searchTerm))
                   : true;
                 const matchesType = !filters.type || employee.type === filters.type;
                 const matchesSection = !filters.section || employee.Section?.name === filters.section;
@@ -675,147 +739,177 @@ export default function Employees({ darkMode }) {
                 return matchesSearch && matchesType && matchesSection && matchesOutlet;
               }), sortConfig.key)
               .map((employee) => (
-              <tr key={employee.id} className="hover:dark:bg-slate-700/30 hover:bg-slate-50 transition-colors duration-150">
+                <tr key={employee.id} className="hover:dark:bg-slate-700/30 hover:bg-slate-50 transition-colors duration-150">
+                  {visibleColumns.image && (
+                    <td className="px-1 py-2 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-center">
+                      {employee.image ? (
+                        <div className="flex justify-center">
+                          <img
+                            src={employee.image}
+                            alt={`${employee.firstName} ${employee.lastName}`}
+                            className="h-14 w-14 rounded-full object-cover shadow-m"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex justify-center">
+                          <div className="h-14 w-14 rounded-full bg-slate-100 dark:bg-slate-600 flex items-center justify-center text-slate-500 dark:text-slate-300 font-medium shadow-m">
+                            {employee.firstName.charAt(0)}{employee.lastName ? employee.lastName.charAt(0) : ''}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  )}
 
-                {visibleColumns.employeeNumber && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">{employee.employeeNumber}</td>
-                )}
-                {visibleColumns.name && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
-                    <span>{employee.firstName} {employee.lastName}</span>
-                  </td>
-                )}
-                {visibleColumns.type && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-left">
-                    {employee.type}
-                  </td>
-                )}
-                {visibleColumns.schedule && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 font-mono text-center">
-                    {!employee.MondayShift && !employee.TuesdayShift && !employee.WednesdayShift && 
-                     !employee.ThursdayShift && !employee.FridayShift && !employee.SaturdayShift && 
-                     !employee.SundayShift ? '' : 
-                     `${employee.MondayShift ? 'M' : '-'}|${employee.TuesdayShift ? 'T' : '-'}|${employee.WednesdayShift ? 'W' : '-'}|${employee.ThursdayShift ? 'T' : '-'}|${employee.FridayShift ? 'F' : '-'}|${employee.SaturdayShift ? 'S' : '-'}|${employee.SundayShift ? 'S' : '-'}`}
-                  </td>
-                )}
-                {visibleColumns.section && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-left">
-                    {employee.Section?.name}
-                  </td>
-                )}
-                {visibleColumns.outlet && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-left">
-                    {employee.Outlet?.name}
-                  </td>
-                )}
-                {visibleColumns.mobile && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-center">
-                    {employee.mobile}
-                  </td>
-                )}
-                {visibleColumns.email && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
-                    {employee.email}
-                  </td>
-                )}
-                {visibleColumns.arcNumber && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
-                    {employee.arcNumber}
-                  </td>
-                )}
-                {visibleColumns.payrollNumber && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-center">
-                    {employee.payrollNumber}
-                  </td>
-                )}
-                {visibleColumns.hourlyPay && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-right">
-                    {employee.hourlyPay ? `€${parseFloat(employee.hourlyPay).toFixed(2).replace(/\.?0+$/, '')}` : '-'}
-                  </td>
-                )}
-                {visibleColumns.monthlyPay && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-right">
-                    {employee.monthlyPay ? `€${parseFloat(employee.monthlyPay).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}
-                  </td>
-                )}
-                {visibleColumns.allowOvertime && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
-                    {employee.allowOvertime ? 'Yes' : 'No'}
-                  </td>
-                )}
-                {visibleColumns.monthlyHours && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-right">
-                    {employee.monthlyHours ? `${employee.monthlyHours}h` : '-'}
-                  </td>
-                )}
-                {visibleColumns.status && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    <button
-                      onClick={() => handleToggleActive(employee.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${employee.active ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-400'}`}
-                    >
-                      {employee.active ? 'Active' : 'Disabled'}
-                    </button>
-                  </td>
-                )}
-                {visibleColumns.actions && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    <div className="flex justify-end space-x-3">
+                  {visibleColumns.employeeNumber && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">{employee.employeeNumber}</td>
+                  )}
+                  {visibleColumns.name && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
+                      <span>{employee.firstName} {employee.lastName}</span>
+                    </td>
+                  )}
+                  {visibleColumns.pinCode && (
+  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-center">
+    {showAllPins ? employee.pinCode : '••••'}
+  </td>
+)}
+
+                  {visibleColumns.type && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-left">
+                      {employee.type}
+                    </td>
+                  )}
+                  {visibleColumns.schedule && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 font-mono text-center">
+                      {!employee.MondayShift && !employee.TuesdayShift && !employee.WednesdayShift &&
+                        !employee.ThursdayShift && !employee.FridayShift && !employee.SaturdayShift &&
+                        !employee.SundayShift ? '' :
+                        `${employee.MondayShift ? 'M' : '-'}|${employee.TuesdayShift ? 'T' : '-'}|${employee.WednesdayShift ? 'W' : '-'}|${employee.ThursdayShift ? 'T' : '-'}|${employee.FridayShift ? 'F' : '-'}|${employee.SaturdayShift ? 'S' : '-'}|${employee.SundayShift ? 'S' : '-'}`}
+                    </td>
+                  )}
+                  {visibleColumns.section && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-left">
+                      {employee.Section?.name}
+                    </td>
+                  )}
+                  {visibleColumns.outlet && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-left">
+                      {employee.Outlet?.name}
+                    </td>
+                  )}
+                  {visibleColumns.mobile && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-center">
+                      {employee.mobile}
+                    </td>
+                  )}
+                  {visibleColumns.email && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
+                      {employee.email}
+                    </td>
+                  )}
+                  {visibleColumns.arcNumber && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
+                      {employee.arcNumber}
+                    </td>
+                  )}
+                  {visibleColumns.payrollNumber && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-center">
+                      {employee.payrollNumber}
+                    </td>
+                  )}
+                  {visibleColumns.hourlyPay && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-right">
+                      {employee.hourlyPay ? `€${parseFloat(employee.hourlyPay).toFixed(2).replace(/\.?0+$/, '')}` : '-'}
+                    </td>
+                  )}
+                  {visibleColumns.monthlyPay && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-right">
+                      {employee.monthlyPay ? `€${parseFloat(employee.monthlyPay).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '-'}
+                    </td>
+                  )}
+                  {visibleColumns.allowOvertime && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900">
+                      {employee.allowOvertime ? 'Yes' : 'No'}
+                    </td>
+                  )}
+                  {visibleColumns.monthlyHours && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-slate-300 text-slate-900 text-right">
+                      {employee.monthlyHours ? `${employee.monthlyHours}h` : '-'}
+                    </td>
+                  )}
+                  {visibleColumns.status && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                       <button
-                        onClick={() => {
-                          const cloneData = {
-                            ...employee,
-                            firstName: `${employee.firstName} (Copy)`,
-                            employeeNumber: null
-                          };
-                          setEditingId(null);
-                          setNewEmployeeData({
-                            firstName: cloneData.firstName,
-                            lastName: cloneData.lastName || '',
-                            mobile: cloneData.mobile || '',
-                            email: cloneData.email || '',
-                            arcNumber: cloneData.arcNumber || '',
-                            payrollNumber: cloneData.payrollNumber || '',
-                            type: cloneData.type,
-                            sectionId: cloneData.Section?.id.toString() || '',
-                            outletId: cloneData.Outlet?.id.toString() || '',
-                            hourlyPay: cloneData.hourlyPay || '',
-                            monthlyPay: cloneData.monthlyPay || '',
-                            allowOvertime: cloneData.allowOvertime || false,
-                            monthlyHours: cloneData.monthlyHours || '',
-                            Note: cloneData.Note || '',
-                            mondayShiftId: cloneData.mondayShiftId || '',
-                            tuesdayShiftId: cloneData.tuesdayShiftId || '',
-                            wednesdayShiftId: cloneData.wednesdayShiftId || '',
-                            thursdayShiftId: cloneData.thursdayShiftId || '',
-                            fridayShiftId: cloneData.fridayShiftId || '',
-                            saturdayShiftId: cloneData.saturdayShiftId || '',
-                            sundayShiftId: cloneData.sundayShiftId || ''
-                          });
-                          setIsModalOpen(true);
-                        }}
-                        className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
-                        title="Clone employee"
+                        onClick={() => handleToggleActive(employee.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${employee.active ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-400'}`}
                       >
-                        <DocumentDuplicateIcon className="h-5 w-5" />
+                        {employee.active ? 'Active' : 'Disabled'}
                       </button>
-                      <button
-                        onClick={() => handleEditStart(employee)}
-                        className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
-                      >
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(employee.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 transition-colors duration-200"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
+                    </td>
+                  )}
+                  {visibleColumns.actions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => {
+                            const cloneData = {
+                              ...employee,
+                              firstName: `${employee.firstName} (Copy)`,
+                              employeeNumber: null
+                            };
+                            setEditingId(null);
+                            setNewEmployeeData({
+                              firstName: cloneData.firstName,
+                              lastName: cloneData.lastName || '',
+                              mobile: cloneData.mobile || '',
+                              email: cloneData.email || '',
+                              arcNumber: cloneData.arcNumber || '',
+                              payrollNumber: cloneData.payrollNumber || '',
+                              type: cloneData.type,
+                              sectionId: cloneData.Section?.id.toString() || '',
+                              outletId: cloneData.Outlet?.id.toString() || '',
+                              hourlyPay: cloneData.hourlyPay || '',
+                              monthlyPay: cloneData.monthlyPay || '',
+                              allowOvertime: cloneData.allowOvertime || false,
+                              monthlyHours: cloneData.monthlyHours || '',
+                              Note: cloneData.Note || '',
+                              mondayShiftId: cloneData.mondayShiftId || '',
+                              tuesdayShiftId: cloneData.tuesdayShiftId || '',
+                              wednesdayShiftId: cloneData.wednesdayShiftId || '',
+                              thursdayShiftId: cloneData.thursdayShiftId || '',
+                              fridayShiftId: cloneData.fridayShiftId || '',
+                              saturdayShiftId: cloneData.saturdayShiftId || '',
+                              sundayShiftId: cloneData.sundayShiftId || '',
+                              pinCode: cloneData.pinCode || '',
+                              address: cloneData.address || '',
+                              emergencyName: cloneData.emergencyName || '',
+                              emergencyNumber: cloneData.emergencyNumber || '',
+                              image: cloneData.image || ''
+                            });
+                            setIsModalOpen(true);
+                          }}
+                          className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
+                          title="Clone employee"
+                        >
+                          <DocumentDuplicateIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleEditStart(employee)}
+                          className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200"
+                        >
+                          <PencilSquareIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(employee.id)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 transition-colors duration-200"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -823,95 +917,166 @@ export default function Employees({ darkMode }) {
       {/* Create/Edit Employee Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-4xl">
-            <h2 className="text-xl font-bold mb-4 dark:text-slate-100">
-              {editingId !== null ? `Edit Employee: ${editingData.employeeNumber}` : `New Employee: ${allEmployees.length > 0 ? Math.max(...allEmployees.filter(emp => emp.employeeNumber).map(emp => emp.employeeNumber || 0), 100) + 1 : 101}`}
-            </h2>
-            <form onSubmit={editingId !== null ? handleEditSave : handleCreateEmployee} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-6xl relative max-h-[96vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-emerald-100 dark:border-emerald-800 pb-1 mb-4 col-span-full">
+              <h3 className="text-base uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400">
+                Personal Details
+              </h3>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                {editingId !== null
+                  ? `Edit Employee: ${editingData.employeeNumber}`
+                  : `New Employee: ${allEmployees.length > 0
+                    ? Math.max(
+                      ...allEmployees
+                        .filter((emp) => emp.employeeNumber)
+                        .map((emp) => emp.employeeNumber || 0),
+                      100
+                    ) + 1
+                    : 101
+                  }`}
+              </h2>
+            </div>
+            <form onSubmit={editingId !== null ? handleEditSave : handleCreateEmployee} className="grid grid-cols-1 md:grid-cols-5 gap-2">
               <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">First Name</label>
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">First Name *</label>
                 <input
                   type="text"
                   value={editingId !== null ? editingData.firstName : newEmployeeData.firstName}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, firstName: e.target.value }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, firstName: e.target.value }) :
                     setNewEmployeeData({ ...newEmployeeData, firstName: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Last Name</label>
                 <input
                   type="text"
                   value={editingId !== null ? editingData.lastName || '' : newEmployeeData.lastName}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, lastName: e.target.value }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, lastName: e.target.value }) :
                     setNewEmployeeData({ ...newEmployeeData, lastName: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                 />
               </div>
-              
+
+              <div className="flex w-full">
+                <div className="w-1/2 pr-1">
+                  <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Mobile</label>
+                  <input
+                    type="text"
+                    value={editingId !== null ? editingData.mobile || '' : newEmployeeData.mobile}
+                    onChange={(e) => editingId !== null ?
+                      setEditingData({ ...editingData, mobile: e.target.value }) :
+                      setNewEmployeeData({ ...newEmployeeData, mobile: e.target.value })}
+                    className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  />
+                </div>
+
+                <div className="w-1/2 pl-1">
+                  <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">ARC Number</label>
+                  <input
+                    type="text"
+                    value={editingId !== null ? editingData.arcNumber || '' : newEmployeeData.arcNumber}
+                    onChange={(e) => editingId !== null ?
+                      setEditingData({ ...editingData, arcNumber: e.target.value }) :
+                      setNewEmployeeData({ ...newEmployeeData, arcNumber: e.target.value })}
+                    className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Mobile</label>
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Emergency Contact Name</label>
                 <input
                   type="text"
-                  value={editingId !== null ? editingData.mobile || '' : newEmployeeData.mobile}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, mobile: e.target.value }) : 
-                    setNewEmployeeData({ ...newEmployeeData, mobile: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  value={editingId !== null ? editingData.emergencyName || '' : newEmployeeData.emergencyName}
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, emergencyName: e.target.value }) :
+                    setNewEmployeeData({ ...newEmployeeData, emergencyName: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                 />
               </div>
-              
-              <div>
+
+              {/* Image - column 5, starts at row 2 and spans 2 rows */}
+              <div className="col-start-5 row-start-1 row-span-2 flex items-center justify-center">
+                <div className="w-36 h-36 rounded-md border border-slate-200 overflow-hidden dark:border-gray-700 shadow-sm bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
+                  {editingData?.image ? (
+                    <img
+                      src={editingData.image}
+                      alt="Employee"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-12 h-12 text-gray-400 dark:text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a8.25 8.25 0 0115 0"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-1">
                 <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={editingId !== null ? editingData.email || '' : newEmployeeData.email}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, email: e.target.value }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, email: e.target.value }) :
                     setNewEmployeeData({ ...newEmployeeData, email: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                 />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">ARC Number</label>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Address</label>
                 <input
                   type="text"
-                  value={editingId !== null ? editingData.arcNumber || '' : newEmployeeData.arcNumber}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, arcNumber: e.target.value }) : 
-                    setNewEmployeeData({ ...newEmployeeData, arcNumber: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  value={editingId !== null ? editingData.address || '' : newEmployeeData.address}
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, address: e.target.value }) :
+                    setNewEmployeeData({ ...newEmployeeData, address: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                 />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Payroll Number</label>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Emergency Contact Mobile</label>
                 <input
                   type="text"
-                  value={editingId !== null ? editingData.payrollNumber || '' : newEmployeeData.payrollNumber}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, payrollNumber: e.target.value }) : 
-                    setNewEmployeeData({ ...newEmployeeData, payrollNumber: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  value={editingId !== null ? editingData.emergencyNumber || '' : newEmployeeData.emergencyNumber}
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, emergencyNumber: e.target.value }) :
+                    setNewEmployeeData({ ...newEmployeeData, emergencyNumber: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                 />
               </div>
-                            
+              <h3 className="col-span-full text-base uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400 border-b border-emerald-100 dark:border-emerald-800 pt-1 pb-2 mb-2">
+                Employment Details
+              </h3>
+
               <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Outlet</label>
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Outlet *</label>
                 <select
                   value={editingId !== null ? editingData.outletId : newEmployeeData.outletId}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, outletId: e.target.value }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, outletId: e.target.value }) :
                     setNewEmployeeData({ ...newEmployeeData, outletId: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                   required
                 >
-                  <option value="">Select outlet</option>
                   {currentOutlets.map((outlet) => (
                     <option key={outlet.id} value={outlet.id}>{outlet.name}</option>
                   ))}
@@ -919,56 +1084,164 @@ export default function Employees({ darkMode }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Section</label>
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Section *</label>
                 <select
                   value={editingId !== null ? editingData.sectionId : newEmployeeData.sectionId}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, sectionId: e.target.value }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, sectionId: e.target.value }) :
                     setNewEmployeeData({ ...newEmployeeData, sectionId: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                   required
                 >
-                  <option value="">Select section</option>
                   {currentSections.map((section) => (
                     <option key={section.id} value={section.id}>{section.name}</option>
                   ))}
                 </select>
               </div>
+              <div className="flex w-full">
+              <div className="w-1/2 pr-1">
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Type *</label>
+                <select
+                  value={editingId !== null ? editingData.type : newEmployeeData.type}
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, type: e.target.value }) :
+                    setNewEmployeeData({ ...newEmployeeData, type: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
+                  required
+                >
+                  <option value="Full-Time">Full-Time</option>
+                  <option value="Part-Time">Part-Time</option>
+                </select>
+              </div>
+              
+              <div className="w-1/2 pl-1">
+  <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Pin Code</label>
+  <div className="relative">
+    <input
+      type={showPin ? 'text' : 'password'}
+      inputMode="numeric"
+      pattern="\d{4}"
+      maxLength={4}
+      autoComplete="new-password" // prevents browser autofill
+      value={editingId !== null ? editingData.pinCode || '' : newEmployeeData.pinCode}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 4) {
+          editingId !== null
+            ? setEditingData({ ...editingData, pinCode: value })
+            : setNewEmployeeData({ ...newEmployeeData, pinCode: value });
+        }
+      }}
+      className="w-full pr-10 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
+    />
+    <button
+      type="button"
+      onClick={() => setShowPin(!showPin)}
+      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-300"
+      tabIndex={-1}
+    >
+      {showPin ? (
+        <EyeSlashIcon className="w-5 h-5" />
+      ) : (
+        <EyeIcon className="w-5 h-5" />
+      )}
+    </button>
+  </div>
+</div>
 
-              <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Hourly Pay</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editingId !== null ? editingData.hourlyPay || '' : newEmployeeData.hourlyPay}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, hourlyPay: e.target.value ? parseFloat(e.target.value) : null }) : 
-                    setNewEmployeeData({ ...newEmployeeData, hourlyPay: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                />
               </div>
               
               <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Monthly Pay</label>
+                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Payroll Number</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  value={editingId !== null ? editingData.monthlyPay || '' : newEmployeeData.monthlyPay}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, monthlyPay: e.target.value ? parseFloat(e.target.value) : null }) : 
-                    setNewEmployeeData({ ...newEmployeeData, monthlyPay: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  type="text"
+                  value={editingId !== null ? editingData.payrollNumber || '' : newEmployeeData.payrollNumber}
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, payrollNumber: e.target.value }) :
+                    setNewEmployeeData({ ...newEmployeeData, payrollNumber: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                 />
-              </div>        
+              </div>
+              <div className="flex w-full">
+              <div className="w-1/2 pr-1">
+                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Alerts</label>
+                    <select
+                      value={editingId !== null ? (editingData.hasAlerts ? 'true' : 'false') : (newEmployeeData.hasAlerts ? 'true' : 'false')}
+                      onChange={(e) =>
+                        editingId !== null
+                          ? setEditingData({ ...editingData, hasAlerts: e.target.value === 'true' })
+                          : setNewEmployeeData({ ...newEmployeeData, hasAlerts: e.target.value === 'true' })
+                      }
+                      className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
 
+                  <div className="w-1/2 pl-1">
+                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Payroll</label>
+                    <select
+                      value={editingId !== null ? (editingData.hasPayroll ? 'true' : 'false') : (newEmployeeData.hasPayroll ? 'true' : 'false')}
+                      onChange={(e) =>
+                        editingId !== null
+                          ? setEditingData({ ...editingData, hasPayroll: e.target.value === 'true' })
+                          : setNewEmployeeData({ ...newEmployeeData, hasPayroll: e.target.value === 'true' })
+                      }
+                      className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+
+              </div>
+              <div className="flex w-full">
+                <div className="w-1/2 pr-1">
+                  <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Hourly Pay</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingId !== null ? editingData.hourlyPay || '' : newEmployeeData.hourlyPay}
+                      onChange={(e) =>
+                        editingId !== null
+                          ? setEditingData({ ...editingData, hourlyPay: e.target.value ? parseFloat(e.target.value) : null })
+                          : setNewEmployeeData({ ...newEmployeeData, hourlyPay: e.target.value })
+                      }
+                      className="w-full pr-8 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-400">€</span>
+                  </div>
+                </div>
+
+
+                <div className="w-1/2 pl-1">
+                  <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Monthly Pay</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingId !== null ? editingData.monthlyPay || '' : newEmployeeData.monthlyPay}
+                      onChange={(e) =>
+                        editingId !== null
+                          ? setEditingData({ ...editingData, monthlyPay: e.target.value ? parseFloat(e.target.value) : null })
+                          : setNewEmployeeData({ ...newEmployeeData, monthlyPay: e.target.value })
+                      }
+                      className="w-full pr-8 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-400">€</span>
+                  </div>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Monthly Overtime</label>
                 <select
                   value={editingId !== null ? (editingData.allowOvertime ? 'true' : 'false') : (newEmployeeData.allowOvertime ? 'true' : 'false')}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, allowOvertime: e.target.value === 'true' }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, allowOvertime: e.target.value === 'true' }) :
                     setNewEmployeeData({ ...newEmployeeData, allowOvertime: e.target.value === 'true' })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                 >
                   <option value="true">Yes</option>
                   <option value="false">No</option>
@@ -980,165 +1253,108 @@ export default function Employees({ darkMode }) {
                 <input
                   type="number"
                   value={editingId !== null ? editingData.monthlyHours || '' : newEmployeeData.monthlyHours}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, monthlyHours: e.target.value ? parseInt(e.target.value) : null }) : 
-                    setNewEmployeeData({ ...newEmployeeData, monthlyHours: e.target.value })}
+                  onChange={(e) => editingId !== null
+                    ? setEditingData({ ...editingData, monthlyHours: e.target.value ? parseInt(e.target.value) : null })
+                    : setNewEmployeeData({ ...newEmployeeData, monthlyHours: e.target.value })}
                   disabled={editingId !== null ? !editingData.allowOvertime : !newEmployeeData.allowOvertime}
-                  className={`w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 ${(editingId !== null ? !editingData.allowOvertime : !newEmployeeData.allowOvertime) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full pr-8 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+      ${editingId !== null ? !editingData.allowOvertime ? 'bg-slate-100 dark:bg-slate-600 opacity-40 cursor-not-allowed' : ''
+                      : !newEmployeeData.allowOvertime ? 'bg-slate-100 dark:bg-slate-600 opacity-40 cursor-not-allowed' : ''}`}
                 />
               </div>
+ 
+ {/* Annual Leave Days */}
+<div className="px-1 mb-4">
+  <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Annual Leave Days</label>
+  <div className="grid grid-cols-2 gap-2"> {/* Using grid instead of flex for better control */}
+    <div className="w-full"> {/* Ensure input field takes up all available width */}
+      <input
+        type="number"
+        value={editingId !== null ? editingData.annualLeaveAllowance || '' : newEmployeeData.annualLeaveAllowance}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (editingId !== null) {
+            setEditingData({ ...editingData, annualLeaveAllowance: value, annualLeaveRemaining: value });
+          } else {
+            setNewEmployeeData({ ...newEmployeeData, annualLeaveAllowance: value, annualLeaveRemaining: value });
+          }
+        }}
+        className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 placeholder:text-xs appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+    </div>
 
+    <div className="w-full relative"> {/* Ensure this field also takes up all available width */}
+      <input
+        type="text"
+        readOnly
+        value={
+          editingId !== null
+            ? (editingData.annualLeaveAllowance ? `${editingData.annualLeaveAllowance}` : '')
+            : (newEmployeeData.annualLeaveAllowance ? `${newEmployeeData.annualLeaveAllowance}` : '')
+        }
+        className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 bg-slate-100 dark:bg-slate-600 opacity-40 cursor-not-allowed"
+      />
+      {(editingId !== null ? editingData.annualLeaveAllowance : newEmployeeData.annualLeaveAllowance) && (
+        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 pointer-events-none">
+          Remaining
+        </span>
+      )}
+    </div>
+  </div>
+</div>
 
-              <div className="md:col-span-2">
+  {/* Sick Days - Disabled */}
+  <div className="flex w-full">
+              <div className="w-1/2 pr-1">
+    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Sick Days</label>
+    <input
+      type="number"
+      value={editingId !== null ? editingData.sickDays || '' : newEmployeeData.sickDays}
+      disabled
+      className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 bg-slate-100 dark:bg-slate-600 opacity-40 cursor-not-allowed"
+    />
+  </div>
+ 
+
+  {/* Off Days - Disabled */}
+  <div className="w-1/2 pl-1">
+    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Off Days</label>
+    <input
+      type="number"
+      value={editingId !== null ? editingData.offDays || '' : newEmployeeData.offDays}
+      disabled
+      className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 bg-slate-100 dark:bg-slate-600 opacity-40 cursor-not-allowed"
+    />
+  </div>
+</div>
+
+               {/*<div className="md:col-span-2">
                 <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Note</label>
                 <textarea
                   value={editingId !== null ? editingData.Note || '' : newEmployeeData.Note}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, Note: e.target.value }) : 
+                  onChange={(e) => editingId !== null ?
+                    setEditingData({ ...editingData, Note: e.target.value }) :
                     setNewEmployeeData({ ...newEmployeeData, Note: e.target.value })}
                   className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                  rows="2"
+                  rows="1"
                 />
-              </div>
+              </div>}*/}
               
-              <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Pin Code</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  maxLength={4}
-                  value={editingId !== null ? editingData.pinCode || '' : newEmployeeData.pinCode}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, ''); // remove non-digit characters
-                    if (value.length <= 4) {
-                      editingId !== null
-                        ? setEditingData({ ...editingData, pinCode: value })
-                        : setNewEmployeeData({ ...newEmployeeData, pinCode: value });
-                    }
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Type</label>
-                <select
-                  value={editingId !== null ? editingData.type : newEmployeeData.type}
-                  onChange={(e) => editingId !== null ? 
-                    setEditingData({ ...editingData, type: e.target.value }) : 
-                    setNewEmployeeData({ ...newEmployeeData, type: e.target.value })}
-                  className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                  required
-                >
-                  <option value="Full-Time">Full-Time</option>
-                  <option value="Part-Time">Part-Time</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-4">
-                <div className="flex space-x-4">
-                  <div>
-                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Annual Leave Days</label>
-                    <div className="flex space-x-2">
-                      <div>
-                        <input
-                          type="number"
-                          placeholder="  Allowance"
-                          value={editingId !== null ? editingData.annualLeaveAllowance || '' : newEmployeeData.annualLeaveAllowance}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (editingId !== null) {
-                              setEditingData({ ...editingData, annualLeaveAllowance: value, annualLeaveRemaining: value });
-                            } else {
-                              setNewEmployeeData({ ...newEmployeeData, annualLeaveAllowance: value, annualLeaveRemaining: value });
-                            }
-                          }}
-                          className="w-24 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 placeholder:text-xs"
-                        />
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          readOnly
-                          value={editingId !== null ? 
-                            (editingData.annualLeaveAllowance ? `${editingData.annualLeaveAllowance}` : '') : 
-                            (newEmployeeData.annualLeaveAllowance ? `${newEmployeeData.annualLeaveAllowance}` : '')}
-                          className="w-24 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 bg-slate-100 dark:bg-slate-600 cursor-not-allowed"
-                        />
-                        {(editingId !== null ? editingData.annualLeaveAllowance : newEmployeeData.annualLeaveAllowance) && 
-                          <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 pointer-events-none">
-                            Remaining
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Sick Days</label>
-                    <input
-                      type="number"
-                      value={editingId !== null ? editingData.sickDays || '' : newEmployeeData.sickDays}
-                      disabled
-                      className="w-20 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 bg-slate-100 dark:bg-slate-600 cursor-not-allowed"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Off Days</label>
-                    <input
-                      type="number"
-                      value={editingId !== null ? editingData.offDays || '' : newEmployeeData.offDays}
-                      disabled
-                      className="w-20 px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 bg-slate-100 dark:bg-slate-600 cursor-not-allowed"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Alerts</label>
-                    <select
-                      value={editingId !== null ? (editingData.hasAlerts ? 'true' : 'false') : (newEmployeeData.hasAlerts ? 'true' : 'false')}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, hasAlerts: e.target.value === 'true' }) : 
-                        setNewEmployeeData({ ...newEmployeeData, hasAlerts: e.target.value === 'true' })}
-                      className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                    >
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Payroll</label>
-                    <select
-                      value={editingId !== null ? (editingData.hasPayroll ? 'true' : 'false') : (newEmployeeData.hasPayroll ? 'true' : 'false')}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, hasPayroll: e.target.value === 'true' }) : 
-                        setNewEmployeeData({ ...newEmployeeData, hasPayroll: e.target.value === 'true' })}
-                      className="w-full px-2 py-1.5 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                    >
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-
-              
               {/* Fixed Shifts Section */}
-              <div className="md:col-span-4 mt-4">
-                <h3 className="text-lg font-medium dark:text-slate-200 text-slate-800 mb-2">Regular Shifts</h3>
+              <div className="md:col-span-5">
+                <h3 className="col-span-full text-base uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400 border-b border-emerald-100 dark:border-emerald-800 pt-1 pb-2 mb-4">
+                  Fixed Schedule
+                </h3>
                 <div className="grid grid-cols-7 gap-2">
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Monday</label>
                     <select
                       value={editingId !== null ? editingData.mondayShiftId : newEmployeeData.mondayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, mondayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, mondayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, mondayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1146,15 +1362,15 @@ export default function Employees({ darkMode }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Tuesday</label>
                     <select
                       value={editingId !== null ? editingData.tuesdayShiftId : newEmployeeData.tuesdayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, tuesdayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, tuesdayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, tuesdayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1162,15 +1378,15 @@ export default function Employees({ darkMode }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Wednesday</label>
                     <select
                       value={editingId !== null ? editingData.wednesdayShiftId : newEmployeeData.wednesdayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, wednesdayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, wednesdayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, wednesdayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1178,15 +1394,15 @@ export default function Employees({ darkMode }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Thursday</label>
                     <select
                       value={editingId !== null ? editingData.thursdayShiftId : newEmployeeData.thursdayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, thursdayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, thursdayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, thursdayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1194,15 +1410,15 @@ export default function Employees({ darkMode }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Friday</label>
                     <select
                       value={editingId !== null ? editingData.fridayShiftId : newEmployeeData.fridayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, fridayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, fridayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, fridayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1210,15 +1426,15 @@ export default function Employees({ darkMode }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Saturday</label>
                     <select
                       value={editingId !== null ? editingData.saturdayShiftId : newEmployeeData.saturdayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, saturdayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, saturdayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, saturdayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1226,15 +1442,15 @@ export default function Employees({ darkMode }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-1">Sunday</label>
                     <select
                       value={editingId !== null ? editingData.sundayShiftId : newEmployeeData.sundayShiftId}
-                      onChange={(e) => editingId !== null ? 
-                        setEditingData({ ...editingData, sundayShiftId: e.target.value }) : 
+                      onChange={(e) => editingId !== null ?
+                        setEditingData({ ...editingData, sundayShiftId: e.target.value }) :
                         setNewEmployeeData({ ...newEmployeeData, sundayShiftId: e.target.value })}
-                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      className="w-full px-1 py-1 text-sm rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 cursor-pointer"
                     >
                       <option value="">No shift</option>
                       {shifts.map((shift) => (
@@ -1244,8 +1460,8 @@ export default function Employees({ darkMode }) {
                   </div>
                 </div>
               </div>
-              
-              <div className="flex justify-end space-x-3 mt-6 md:col-span-4">
+
+              <div className="flex justify-end space-x-3 mt-6 md:col-span-5">
                 <button
                   type="button"
                   onClick={() => {

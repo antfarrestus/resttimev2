@@ -103,8 +103,6 @@ const getTimeRecords = async (req, res) => {
             const clockInObj = new Date(record.clockInTime);
             const clockOutObj = new Date(record.clockOutTime);
 
-            // strip z in the end
-
             // timezone local time
             startDateObj.setHours(startDateObj.getHours() + 3);
             endDateObj.setHours(endDateObj.getHours() + 3);
@@ -184,8 +182,51 @@ const getTimeRecords = async (req, res) => {
               // Convert minutes to hours (only if we're in the valid date branch)
               duration = (totalMinutes / 60).toFixed(2);
               
-              // Calculate overtime (anything over 8 hours)
-              overtime = Math.max(0, (totalMinutes / 60 - 8)).toFixed(2);
+              // Calculate overtime based on employee's scheduled hours if available
+              // Find matching schedule for this employee on this date
+              const dateStr = format(clockInObj, 'yyyy-MM-dd');
+              const employeeId = record.employeeId;
+              
+              try {
+                // Try to find a matching schedule to get scheduled hours
+                const Schedule = require('../models').Schedule;
+                const matchingSchedule = await Schedule.findOne({
+                  where: {
+                    employeeId,
+                    date: dateStr
+                  }
+                });
+                
+                // If we have a matching schedule with start and end times, use that for overtime calculation
+                if (matchingSchedule && matchingSchedule.startTime && matchingSchedule.endTime) {
+                  const scheduledStart = parseISO(`${dateStr}T${matchingSchedule.startTime}`);
+                  const scheduledEnd = parseISO(`${dateStr}T${matchingSchedule.endTime}`);
+                  
+                  // Calculate scheduled minutes, accounting for breaks if defined
+                  let scheduledMinutes = differenceInMinutes(scheduledEnd, scheduledStart);
+                  
+                  // Subtract scheduled break time if both break start and end exist
+                  if (matchingSchedule.break1start && matchingSchedule.break1end) {
+                    const breakStart = parseISO(`${dateStr}T${matchingSchedule.break1start}`);
+                    const breakEnd = parseISO(`${dateStr}T${matchingSchedule.break1end}`);
+                    const breakMinutes = differenceInMinutes(breakEnd, breakStart);
+                    if (breakMinutes > 0) {
+                      scheduledMinutes -= breakMinutes;
+                    }
+                  }
+                  
+                  // Calculate overtime as anything over scheduled hours
+                  const scheduledHours = scheduledMinutes / 60;
+                  overtime = Math.max(0, (totalMinutes / 60 - scheduledHours)).toFixed(2);
+                } else {
+                  // Fallback to standard 8-hour day if no schedule found
+                  overtime = Math.max(0, (totalMinutes / 60 - 8)).toFixed(2);
+                }
+              } catch (scheduleError) {
+                console.error('Error finding schedule for overtime calculation:', scheduleError);
+                // Fallback to standard 8-hour day
+                overtime = Math.max(0, (totalMinutes / 60 - 8)).toFixed(2);
+              }
             }
           } catch (err) {
             console.error('Error calculating duration for record:', record.id, err);
@@ -283,11 +324,22 @@ const getScheduleComparison = async (req, res) => {
       return res.status(400).json({ message: 'Start date and end date are required' });
     }
 
+    // Parse date strings to Date objects with proper validation
+    const startDateObj = new Date(startDate);
+    // Set endDate to the end of the day (23:59:59.999)
+    const endDateObj = new Date(endDate);
+    endDateObj.setHours(23, 59, 59, 999);
+
+    // Check if the parsed dates are valid
+    if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
+
     // Get all time records for the date range
     const whereConditions = {
       companyId,
       clockInTime: {
-        [Op.between]: [startDate,endDate]
+        [Op.between]: [startDateObj, endDateObj]
       }
     };
 
@@ -299,7 +351,8 @@ const getScheduleComparison = async (req, res) => {
       where: whereConditions,
       include: [{
         model: Employee,
-        attributes: ['id', 'firstName', 'lastName', 'outletId']
+        attributes: ['id', 'firstName', 'lastName', 'outletId'],
+        required: false // Use LEFT JOIN to prevent records from being excluded if employee is missing
       }]
     });
 
@@ -308,7 +361,7 @@ const getScheduleComparison = async (req, res) => {
       where: {
         companyId,
         date: {
-          [Op.between]: [startDate, endDate]
+          [Op.between]: [format(startDateObj, 'yyyy-MM-dd'), format(endDateObj, 'yyyy-MM-dd')]
         },
         ...(outletId ? { outletId } : {})
       },
@@ -354,147 +407,245 @@ const getScheduleComparison = async (req, res) => {
     // Process each time record
     for (const record of timeRecords) {
       try {
+        // Skip records without an employee association
+        if (!record.Employee) {
+          console.warn(`TimeRecord ID ${record.id} has no associated Employee, skipping comparison`);
+          continue;
+        }
+
         // Use record.date if available, otherwise extract from clockInTime
         let dateStr;
-        if (record.date) {
-          dateStr = format(new Date(record.date), 'yyyy-MM-dd');
-        } else if (record.clockInTime) {
-          dateStr = format(new Date(record.clockInTime), 'yyyy-MM-dd');
-        } else {
-          // Skip records without a valid date
-          console.warn('Skipping comparison for record without date or clockInTime:', record.id);
+        try {
+          if (record.date) {
+            const dateObj = new Date(record.date);
+            if (isNaN(dateObj.getTime())) {
+              console.warn('Invalid date value for record:', record.id, record.date);
+              continue;
+            }
+            dateStr = format(dateObj, 'yyyy-MM-dd');
+          } else if (record.clockInTime) {
+            const clockInObj = new Date(record.clockInTime);
+            if (isNaN(clockInObj.getTime())) {
+              console.warn('Invalid clockInTime value for record:', record.id, record.clockInTime);
+              continue;
+            }
+            dateStr = format(clockInObj, 'yyyy-MM-dd');
+          } else {
+            // Skip records without a valid date
+            console.warn('Skipping comparison for record without date or clockInTime:', record.id);
+            continue;
+          }
+        } catch (dateError) {
+          console.error('Error processing date for record:', record.id, dateError);
           continue;
         }
         
         const employeeId = record.employeeId;
         
+        // Initialize comparison results for this date and employee
+        if (!comparisonResults[dateStr]) {
+          comparisonResults[dateStr] = {};
+        }
+        
         // Find matching schedule for this employee on this date
-        const matchingSchedule = schedules.find(s => 
-          s.employeeId === employeeId && 
-          format(new Date(s.date), 'yyyy-MM-dd') === dateStr
-        );
+        const matchingSchedule = schedules.find(s => {
+          try {
+            return s.employeeId === employeeId && 
+                  format(new Date(s.date), 'yyyy-MM-dd') === dateStr;
+          } catch (error) {
+            console.error('Error comparing schedule dates:', error);
+            return false;
+          }
+        });
 
         if (!matchingSchedule) {
           // No schedule found, no color needed
-          if (!comparisonResults[dateStr]) {
-            comparisonResults[dateStr] = {};
-          }
-          comparisonResults[dateStr][employeeId] = { color: 'transparent' };
+          comparisonResults[dateStr][employeeId] = {
+            clockInColor: 'transparent',
+            clockOutColor: 'transparent',
+            breakStartColor: 'transparent',
+            breakEndColor: 'transparent'
+          };
           continue;
         }
+        
+        // Get grace periods for this outlet
+        const gracePeriods = outletGracePeriods[record.outletId] || {
+          earlyClockInGrace: 0,
+          slightlyLateClockInGrace: 0,
+          lateClockInGrace: 0,
+          earlyClockOutGrace: 0,
+          slightlyLateClockOutGrace: 0,
+          lateClockOutGrace: 0
+        };
+
+        // Initialize colors
+        let clockInColor = 'transparent';
+        let clockOutColor = 'transparent';
+        let breakStartColor = 'transparent';
+        let breakEndColor = 'transparent';
+
+        // Compare clock in time with scheduled start time
+        if (record.clockInTime && matchingSchedule.startTime) {
+          try {
+            const scheduledStart = parseISO(`${dateStr}T${matchingSchedule.startTime}`);
+            const actualClockIn = new Date(record.clockInTime);
+            
+            // Validate date objects
+            if (isNaN(scheduledStart.getTime()) || isNaN(actualClockIn.getTime())) {
+              console.warn('Invalid clock in or scheduled start time:', {
+                recordId: record.id,
+                clockIn: record.clockInTime,
+                scheduledStart: matchingSchedule.startTime
+              });
+            } else {
+              const diffMinutes = differenceInMinutes(actualClockIn, scheduledStart);
+
+              // Early clock in (employee arrived before scheduled time)
+              if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.earlyClockInGrace) {
+                clockInColor = 'blue';
+              }
+              // Slightly late clock in
+              else if (diffMinutes > 0 && diffMinutes <= gracePeriods.slightlyLateClockInGrace) {
+                clockInColor = 'amber';
+              }
+              // Late clock in
+              else if (diffMinutes > 0 && diffMinutes > gracePeriods.slightlyLateClockInGrace) {
+                clockInColor = 'red';
+              }
+            }
+          } catch (timeError) {
+            console.error('Error comparing clock in times:', timeError);
+          }
+        }
+
+        // Compare clock out time with scheduled end time
+        if (record.clockOutTime && matchingSchedule.endTime) {
+          try {
+            const scheduledEnd = parseISO(`${dateStr}T${matchingSchedule.endTime}`);
+            const actualClockOut = new Date(record.clockOutTime);
+            
+            // Validate date objects
+            if (isNaN(scheduledEnd.getTime()) || isNaN(actualClockOut.getTime())) {
+              console.warn('Invalid clock out or scheduled end time:', {
+                recordId: record.id,
+                clockOut: record.clockOutTime,
+                scheduledEnd: matchingSchedule.endTime
+              });
+            } else {
+              const diffMinutes = differenceInMinutes(actualClockOut, scheduledEnd);
+
+              // Early clock out (employee left before scheduled end time)
+              if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.earlyClockOutGrace) {
+                clockOutColor = 'blue';
+              }
+              // Slightly late clock out
+              else if (diffMinutes > 0 && diffMinutes <= gracePeriods.slightlyLateClockOutGrace) {
+                clockOutColor = 'amber';
+              }
+              // Late clock out
+              else if (diffMinutes > 0 && diffMinutes > gracePeriods.slightlyLateClockOutGrace) {
+                clockOutColor = 'red';
+              }
+            }
+          } catch (timeError) {
+            console.error('Error comparing clock out times:', timeError);
+          }
+        }
+
+        // Compare break start with scheduled break start
+        if (record.breakStartTime && matchingSchedule.break1start) {
+          try {
+            const scheduledBreakStart = parseISO(`${dateStr}T${matchingSchedule.break1start}`);
+            const actualBreakStart = new Date(record.breakStartTime);
+            
+            // Validate date objects
+            if (isNaN(scheduledBreakStart.getTime()) || isNaN(actualBreakStart.getTime())) {
+              console.warn('Invalid break start or scheduled break start time:', {
+                recordId: record.id,
+                breakStart: record.breakStartTime,
+                scheduledBreakStart: matchingSchedule.break1start
+              });
+            } else {
+              const diffMinutes = differenceInMinutes(actualBreakStart, scheduledBreakStart);
+
+              // Apply the same clock in grace periods to break start
+              if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.earlyClockInGrace) {
+                breakStartColor = 'blue';
+              }
+              else if (diffMinutes > 0 && diffMinutes <= gracePeriods.slightlyLateClockInGrace) {
+                breakStartColor = 'amber';
+              }
+              else if (diffMinutes > 0 && diffMinutes > gracePeriods.slightlyLateClockInGrace) {
+                breakStartColor = 'red';
+              }
+            }
+          } catch (timeError) {
+            console.error('Error comparing break start times:', timeError);
+          }
+        }
+
+        // Compare break end with scheduled break end
+        if (record.breakEndTime && matchingSchedule.break1end) {
+          try {
+            const scheduledBreakEnd = parseISO(`${dateStr}T${matchingSchedule.break1end}`);
+            const actualBreakEnd = new Date(record.breakEndTime);
+            
+            // Validate date objects
+            if (isNaN(scheduledBreakEnd.getTime()) || isNaN(actualBreakEnd.getTime())) {
+              console.warn('Invalid break end or scheduled break end time:', {
+                recordId: record.id,
+                breakEnd: record.breakEndTime,
+                scheduledBreakEnd: matchingSchedule.break1end
+              });
+            } else {
+              const diffMinutes = differenceInMinutes(actualBreakEnd, scheduledBreakEnd);
+
+              // Apply the same clock out grace periods to break end
+              if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.earlyClockOutGrace) {
+                breakEndColor = 'blue';
+              }
+              else if (diffMinutes > 0 && diffMinutes <= gracePeriods.slightlyLateClockOutGrace) {
+                breakEndColor = 'amber';
+              }
+              else if (diffMinutes > 0 && diffMinutes > gracePeriods.slightlyLateClockOutGrace) {
+                breakEndColor = 'red';
+              }
+            }
+          } catch (timeError) {
+            console.error('Error comparing break end times:', timeError);
+          }
+        }
+
+        // Store the comparison results
+        comparisonResults[dateStr][employeeId] = {
+          clockInColor,
+          clockOutColor,
+          breakStartColor,
+          breakEndColor
+        };
       } catch (err) {
         console.error('Error processing time record for comparison:', record.id, err);
         continue;
       }
-
-      // Get grace periods for this outlet
-      const gracePeriods = outletGracePeriods[record.outletId] || {
-        earlyClockInGrace: 0,
-        slightlyLateClockInGrace: 0,
-        lateClockInGrace: 0,
-        earlyClockOutGrace: 0,
-        slightlyLateClockOutGrace: 0,
-        lateClockOutGrace: 0
-      };
-
-      // Compare clock in time with scheduled start time
-      let clockInColor = 'transparent';
-      let clockOutColor = 'transparent';
-      let breakStartColor = 'transparent';
-      let breakEndColor = 'transparent';
-
-      if (record.clockInTime && matchingSchedule.startTime) {
-        const scheduledStart = parseISO(`${dateStr}T${matchingSchedule.startTime}`);
-        const actualClockIn = new Date(record.clockInTime);
-        const diffMinutes = differenceInMinutes(scheduledStart, actualClockIn);
-
-        // Early clock in
-        if (diffMinutes > 0 && diffMinutes <= gracePeriods.earlyClockInGrace) {
-          clockInColor = 'blue';
-        }
-        // Slightly late clock in
-        else if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.slightlyLateClockInGrace) {
-          clockInColor = 'amber';
-        }
-        // Late clock in
-        else if (diffMinutes < 0 && Math.abs(diffMinutes) > gracePeriods.slightlyLateClockInGrace) {
-          clockInColor = 'red';
-        }
-      }
-
-      // Compare clock out time with scheduled end time
-      if (record.clockOutTime && matchingSchedule.endTime) {
-        const scheduledEnd = parseISO(`${dateStr}T${matchingSchedule.endTime}`);
-        const actualClockOut = new Date(record.clockOutTime);
-        const diffMinutes = differenceInMinutes(actualClockOut, scheduledEnd);
-
-        // Early clock out
-        if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.earlyClockOutGrace) {
-          clockOutColor = 'blue';
-        }
-        // Slightly late clock out
-        else if (diffMinutes > 0 && diffMinutes <= gracePeriods.slightlyLateClockOutGrace) {
-          clockOutColor = 'amber';
-        }
-        // Late clock out
-        else if (diffMinutes > 0 && diffMinutes > gracePeriods.slightlyLateClockOutGrace) {
-          clockOutColor = 'red';
-        }
-      }
-
-      // Compare break start with scheduled break start
-      if (record.breakStartTime && matchingSchedule.break1start) {
-        const scheduledBreakStart = parseISO(`${dateStr}T${matchingSchedule.break1start}`);
-        const actualBreakStart = new Date(record.breakStartTime);
-        const diffMinutes = differenceInMinutes(scheduledBreakStart, actualBreakStart);
-
-        // Apply the same clock in grace periods to break start
-        if (diffMinutes > 0 && diffMinutes <= gracePeriods.earlyClockInGrace) {
-          breakStartColor = 'blue';
-        }
-        else if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.slightlyLateClockInGrace) {
-          breakStartColor = 'amber';
-        }
-        else if (diffMinutes < 0 && Math.abs(diffMinutes) > gracePeriods.slightlyLateClockInGrace) {
-          breakStartColor = 'red';
-        }
-      }
-
-      // Compare break end with scheduled break end
-      if (record.breakEndTime && matchingSchedule.break1end) {
-        const scheduledBreakEnd = parseISO(`${dateStr}T${matchingSchedule.break1end}`);
-        const actualBreakEnd = new Date(record.breakEndTime);
-        const diffMinutes = differenceInMinutes(actualBreakEnd, scheduledBreakEnd);
-
-        // Apply the same clock out grace periods to break end
-        if (diffMinutes < 0 && Math.abs(diffMinutes) <= gracePeriods.earlyClockOutGrace) {
-          breakEndColor = 'blue';
-        }
-        else if (diffMinutes > 0 && diffMinutes <= gracePeriods.slightlyLateClockOutGrace) {
-          breakEndColor = 'amber';
-        }
-        else if (diffMinutes > 0 && diffMinutes > gracePeriods.slightlyLateClockOutGrace) {
-          breakEndColor = 'red';
-        }
-      }
-
-      // Store the comparison results
-      if (!comparisonResults[dateStr]) {
-        comparisonResults[dateStr] = {};
-      }
-      
-      comparisonResults[dateStr][employeeId] = {
-        clockInColor,
-        clockOutColor,
-        breakStartColor,
-        breakEndColor
-      };
     }
-
-    res.json(comparisonResults);
+    
+    // Validate the final comparison results before sending response
+    if (!comparisonResults || typeof comparisonResults !== 'object') {
+      console.error('Invalid comparison results structure:', comparisonResults);
+      return res.status(500).json({ message: 'Error processing schedule comparison data' });
+    }
+    
+    // Send the response with proper error handling
+    try {
+      res.json(comparisonResults);
+    } catch (responseError) {
+      console.error('Error sending schedule comparison response:', responseError);
+      res.status(500).json({ message: 'Error sending schedule comparison data' });
+    }
   } catch (error) {
-    console.error('Error comparing schedules:', error);
-    res.status(500).json({ message: 'Failed to compare schedules' });
+    console.error('Error fetching schedule comparison:', error);
+    res.status(500).json({ message: 'Failed to fetch schedule comparison' });
   }
 };
 

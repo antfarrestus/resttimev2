@@ -599,7 +599,7 @@ export default function Shifts({ darkMode }) {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                       required
                     />
                   </div>
@@ -609,7 +609,7 @@ export default function Shifts({ darkMode }) {
                       onClick={() => setFormData({ ...formData, isOpenShift: !formData.isOpenShift })}
                       className={`px-3 py-2 rounded-lg border transition-colors duration-200 ${formData.isOpenShift 
                         ? 'bg-slate-600 text-white border-slate-600 dark:bg-slate-600 dark:border-slate-500' 
-                        : 'bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}
+                        : 'bg-white text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}
                     >
                       Open Shift
                     </button>
@@ -624,7 +624,7 @@ export default function Shifts({ darkMode }) {
                       type="time"
                       value={formData.startTime}
                       onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      className={`w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
+                      className={`w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
                       required={!formData.isOpenShift}
                       disabled={formData.isOpenShift}
                     />
@@ -637,7 +637,7 @@ export default function Shifts({ darkMode }) {
                       type="time"
                       value={formData.endTime}
                       onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      className={`w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
+                      className={`w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
                       required={!formData.isOpenShift}
                       disabled={formData.isOpenShift}
                     />
@@ -653,14 +653,14 @@ export default function Shifts({ darkMode }) {
                         min="0.5"
                         value={formData.manualDuration}
                         onChange={(e) => setFormData({ ...formData, manualDuration: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                        className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                         required
                       />
                     ) : (
                       <input
                         type="text"
                         value={`${calculateDuration(formData.startTime, formData.endTime)}h`}
-                        className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                        className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                         disabled
                       />
                     )}
@@ -675,7 +675,7 @@ export default function Shifts({ darkMode }) {
                       min="0"
                       value={formData.shiftRate}
                       onChange={(e) => setFormData({ ...formData, shiftRate: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                       required
                     />
                   </div>
@@ -699,7 +699,7 @@ export default function Shifts({ darkMode }) {
                   </div>
                   
                   {formData.breaks.map((breakItem, index) => (
-                    <div key={index} className="grid grid-cols-5 gap-2 mb-3 p-3 border dark:border-slate-600 border-slate-300 rounded-lg bg-white dark:bg-slate-800/80 shadow-sm">
+                    <div key={index} className="grid grid-cols-5 gap-2 mb-3 p-3 border dark:border-slate-600 border-slate-200 rounded-lg bg-white dark:bg-slate-800/80 shadow-sm">
                       <div className="col-span-2">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -710,7 +710,7 @@ export default function Shifts({ darkMode }) {
                               type="time"
                               value={breakItem.startTime}
                               onChange={(e) => handleBreakChange(index, 'startTime', e.target.value)}
-                              className={`w-full px-2 py-1 text-sm rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
+                              className={`w-full px-2 py-1 text-sm rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
                               disabled={formData.isOpenShift}
                             />
                           </div>
@@ -722,7 +722,7 @@ export default function Shifts({ darkMode }) {
                               type="time"
                               value={breakItem.endTime}
                               onChange={(e) => handleBreakChange(index, 'endTime', e.target.value)}
-                              className={`w-full px-2 py-1 text-sm rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
+                              className={`w-full px-2 py-1 text-sm rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500 ${formData.isOpenShift ? 'opacity-50' : ''}`}
                               disabled={formData.isOpenShift}
                             />
                           </div>
@@ -741,7 +741,7 @@ export default function Shifts({ darkMode }) {
                               step="5"
                               value={breakItem.duration ? Math.round(breakItem.duration * 60) : ''}
                               onChange={(e) => handleBreakChange(index, 'duration', e.target.value / 60)}
-                              className="w-20 px-2 py-1 text-sm rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                              className="w-20 px-2 py-1 text-sm rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-500"
                               placeholder="mins"
                             />
                           ) : (

@@ -312,7 +312,7 @@ export default function Devices({ darkMode }) {
       {/* Create Device Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4 dark:text-slate-100">Create New Device</h2>
             <form onSubmit={handleCreateDevice}>
               <div className="space-y-4">
@@ -325,12 +325,13 @@ export default function Devices({ darkMode }) {
                     id="deviceName"
                     value={newDeviceData.name}
                     onChange={(e) => setNewDeviceData({ ...newDeviceData, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                     placeholder="Enter device name"
                     required
                   />
                 </div>
-                <div>
+                <div className="flex w-full">
+                <div className="w-1/2 pr-1">
                   <label htmlFor="deviceOutlet" className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-2">
                     Outlet
                   </label>
@@ -338,7 +339,7 @@ export default function Devices({ darkMode }) {
                     id="deviceOutlet"
                     value={newDeviceData.outlet}
                     onChange={(e) => setNewDeviceData({ ...newDeviceData, outlet: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 cursor-pointer"
                     required
                   >
                     <option value="">Select an outlet</option>
@@ -347,7 +348,7 @@ export default function Devices({ darkMode }) {
                     ))}
                   </select>
                 </div>
-                <div>
+                <div className="w-1/2 pl-1">
                   <label htmlFor="devicePassword" className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-2">
                     Password
                   </label>
@@ -356,11 +357,12 @@ export default function Devices({ darkMode }) {
                     id="devicePassword"
                     value={newDeviceData.password}
                     onChange={(e) => setNewDeviceData({ ...newDeviceData, password: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                     placeholder="Enter device password"
                     required
                   />
                 </div>
+              </div>
               </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button

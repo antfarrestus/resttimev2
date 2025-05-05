@@ -141,6 +141,22 @@ const Employee = sequelize.define('Employee', {
   pinCode: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  address: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  emergencyName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  emergencyNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  image: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   timestamps: true

@@ -3,8 +3,8 @@ import { useCompany } from '../contexts/CompanyContext';
 import { format, startOfWeek, add, sub, parseISO, formatISO, isValid, endOfMonth, startOfMonth } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { getOutlets, getSections, getEmployees, getTimeRecords, getScheduleComparison, createTimeRecord } from '../services/api';
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, FunnelIcon, PlusIcon, EyeIcon, ClockIcon, UserCircleIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, QueueListIcon } from '@heroicons/react/24/outline';
+import { getOutlets, getSections, getEmployees, getTimeRecords, getScheduleComparison, createTimeRecord, updateTimeRecord } from '../services/api';
+import { ChevronDownIcon, FunnelIcon, PlusIcon, EyeIcon, ClockIcon, TrashIcon, UserCircleIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, QueueListIcon } from '@heroicons/react/24/outline';
 import { Menu, Switch } from '@headlessui/react';
 import ManualTimeEntryModal from '../components/ManualTimeEntryModal';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -23,10 +23,60 @@ const Timesheet = ({ darkMode }) => {
   const [timeRecords, setTimeRecords] = useState({});
   const [scheduleComparison, setScheduleComparison] = useState({});
   const [editingCell, setEditingCell] = useState(null);
-  const [dateRange, setDateRange] = useState({
+  const handleEditStart = (dateStr, employeeId, field) => {
+    setEditingCell({ dateStr, employeeId, field });
+  };
+  const getInitialDateRange = () => {
+  const saved = sessionStorage.getItem('dateRange');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      return {
+        startDate: new Date(parsed.startDate),
+        endDate: new Date(parsed.endDate),
+      };
+    } catch (e) {
+      console.error('Invalid saved date range:', e);
+    }
+  }
+  return {
     startDate: startOfDay(new Date()),
-    endDate: endOfDay(new Date())
-  });
+    endDate: endOfDay(new Date()),
+  };
+};
+const handleClearField = (dateStr, employeeId, field) => {
+  const updatedRecords = { ...timeRecords };
+
+  // Ensure field exists for the employee and date
+  if (updatedRecords[dateStr] && updatedRecords[dateStr][employeeId]) {
+    updatedRecords[dateStr][employeeId][field] = null;
+
+    // Optionally clear duration and overtime if clockIn/Out is cleared
+    if (['clockIn', 'clockOut'].includes(field)) {
+      updatedRecords[dateStr][employeeId].duration = null;
+      updatedRecords[dateStr][employeeId].overtime = null;
+    }
+
+    // Update state with the cleared field
+    setTimeRecords(updatedRecords);
+
+    // Trigger saving changes to the database after state has been updated
+    setEditingCell({ dateStr, employeeId, field }); // Set the editing context
+  }
+};
+
+
+
+const [dateRange, setDateRange] = useState(getInitialDateRange);
+
+useEffect(() => {
+  sessionStorage.setItem('dateRange', JSON.stringify({
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+  }));
+}, [dateRange]);
+
+  
   const [isMainOutletDropdownOpen, setIsMainOutletDropdownOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null);
   const [filters, setFilters] = useState({
@@ -100,6 +150,19 @@ const Timesheet = ({ darkMode }) => {
     return days;
   };
 
+  const handleDeleteTimeField = (dateStr, employeeId, field) => {
+    const updatedRecords = { ...timeRecords };
+    if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
+    if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
+  
+    updatedRecords[dateStr][employeeId][field] = null; // Ensure UI data is null
+    setEditingCell({ dateStr, employeeId, field });
+    setTimeRecords(updatedRecords);
+  };
+  
+  
+  
+
   const weekDays = getDaysInRange();
 
   // Get ribbon class based on color from schedule comparison
@@ -109,8 +172,7 @@ const Timesheet = ({ darkMode }) => {
       return 'bg-transparent';
     }
     
-
-
+    // Use the schedule comparison data that's already fetched
     const comparison = scheduleComparison[dateStr][employeeId];
     let color = 'transparent';
 
@@ -140,9 +202,12 @@ const Timesheet = ({ darkMode }) => {
 
 
 
-  // Calculate cost for a specific duration using fixed rate of €10 per hour
-  const calculateCost = (duration) => {
-    const hourlyRate = 10; // Fixed rate of €10 per hour
+  // Calculate cost for a specific duration using employee's hourly pay rate
+  const calculateCost = (duration, employeeId) => {
+    // Find the employee by ID to get their hourly pay rate
+    const employee = employees.find(emp => emp.id === employeeId);
+    // Use employee's hourlyPay if available, otherwise fallback to 0
+    const hourlyRate = employee?.hourlyPay || 0;
     const cost = hourlyRate * parseFloat(duration);
     return cost.toFixed(2);
   };
@@ -159,7 +224,7 @@ const Timesheet = ({ darkMode }) => {
       if (record) {
         totalDuration += parseFloat(record.duration) || 0;
         totalOvertime += parseFloat(record.overtime) || 0;
-        totalCost += parseFloat(calculateCost(record.duration)) || 0;
+        totalCost += parseFloat(calculateCost(record.duration, employeeId)) || 0;
       }
     });
 
@@ -185,7 +250,7 @@ const Timesheet = ({ darkMode }) => {
       if (record) {
         totalDuration += parseFloat(record.duration) || 0;
         totalOvertime += parseFloat(record.overtime) || 0;
-        totalCost += parseFloat(calculateCost(record.duration)) || 0;
+        totalCost += parseFloat(calculateCost(record.duration, employee.id)) || 0;
       }
     });
 
@@ -392,48 +457,93 @@ const Timesheet = ({ darkMode }) => {
   };
 
   // Handle editing of time fields
-  const handleEditStart = (dateStr, employeeId, field) => {
-    setEditingCell({ dateStr, employeeId, field });
-  };
-
   const handleTimeChange = (e, dateStr, employeeId, field) => {
-    const timeValue = e.target.value;
-
-    if (!timeRecords[dateStr] || !timeRecords[dateStr][employeeId]) return;
-
-    // Create a new date object from the existing ISO string
-    const currentDate = parseISO(timeRecords[dateStr][employeeId][field]);
-    if (!isValid(currentDate)) return;
-
-    // Parse the new time value (HH:MM)
+    let timeValue = e.target.value;
+    
+    // Format the input if it doesn't include a colon
+    // This handles cases like "1500" and converts to "15:00"
+    if (timeValue && !timeValue.includes(':') && timeValue.length >= 3) {
+      // If input is like "1500", format it as "15:00"
+      const hours = timeValue.substring(0, timeValue.length - 2);
+      const minutes = timeValue.substring(timeValue.length - 2);
+      timeValue = `${hours}:${minutes}`;
+    }
+  
+    // ✅ Block invalid input early
+    if (!timeValue || !timeValue.includes(':')) return;
+  
     const [hours, minutes] = timeValue.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes)) return;
-
-    // Create a new date with the updated time
-    const updatedDate = new Date(currentDate);
-    updatedDate.setHours(hours, minutes, 0);
-
-    // Update the time record
+    
+    // Validate hours and minutes are within valid ranges
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return;
+  
+    // ✅ Defensive copy of records
     const updatedRecords = { ...timeRecords };
-    updatedRecords[dateStr][employeeId][field] = formatISO(updatedDate);
+    if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
+    if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
+  
+    const existingRaw = updatedRecords[dateStr][employeeId][field];
+  
+    let baseDate;
+    try {
+      baseDate = existingRaw && typeof existingRaw === 'string' && existingRaw.includes('T')
+        ? parseISO(existingRaw)
+        : new Date(); // Fallback: today
+    } catch (err) {
+      console.error('parseISO error:', err, 'Value:', existingRaw);
+      baseDate = new Date(); // Safe fallback
+    }
+  
+    if (!isValid(baseDate)) baseDate = new Date();
+  
+    // ✅ Apply new time
+    // Add Z suffix to indicate UTC time, matching the format used in ManualTimeEntryModal
+    const localTimeStr = `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`;
+    updatedRecords[dateStr][employeeId][field] = localTimeStr;
 
-    // Recalculate duration and overtime
+
+  
+    // ✅ Recalculate duration and overtime
     if (['clockIn', 'clockOut', 'breakStart', 'breakEnd'].includes(field)) {
       const record = updatedRecords[dateStr][employeeId];
-      const clockIn = parseISO(record.clockIn);
-      const clockOut = parseISO(record.clockOut);
-      const breakStart = parseISO(record.breakStart);
-      const breakEnd = parseISO(record.breakEnd);
-
-      if (isValid(clockIn) && isValid(clockOut) && isValid(breakStart) && isValid(breakEnd)) {
-        const workMinutes = (clockOut - clockIn) / 60000 - (breakEnd - breakStart) / 60000;
-        record.duration = (workMinutes / 60).toFixed(2);
-        record.overtime = Math.max(0, (workMinutes / 60 - 8)).toFixed(2);
+      try {
+        // Check if all required fields exist before parsing
+        if (record.clockIn && record.clockOut && record.breakStart && record.breakEnd) {
+          const clockIn = parseISO(record.clockIn);
+          const clockOut = parseISO(record.clockOut);
+          const breakStart = parseISO(record.breakStart);
+          const breakEnd = parseISO(record.breakEnd);
+      
+          if (isValid(clockIn) && isValid(clockOut) && isValid(breakStart) && isValid(breakEnd)) {
+            const workMinutes = (clockOut - clockIn) / 60000 - (breakEnd - breakStart) / 60000;
+            record.duration = (workMinutes / 60).toFixed(2);
+            record.overtime = Math.max(0, (workMinutes / 60 - 8)).toFixed(2);
+          }
+        }
+      } catch (e) {
+        console.warn('Duration/overtime calculation skipped due to invalid data:', e);
       }
     }
-
+    
+    // Set the editing cell so handleEditEnd knows which record to save
+    setEditingCell({ dateStr, employeeId, field });
+  
     setTimeRecords(updatedRecords);
   };
+  
+  // Function to handle blur event on time inputs
+  const handleTimeBlur = () => {
+    // Call handleEditEnd to save changes to the database
+    handleEditEnd();
+  };
+  
+  // Add a function to handle the blur event (when input loses focus)
+  const handleTimeInputBlur = () => {
+    // Call handleEditEnd to save changes to the database
+    handleEditEnd();
+  };
+  
 
   // Handle direct editing of duration field
   const handleDurationChange = (e, dateStr, employeeId) => {
@@ -446,12 +556,64 @@ const Timesheet = ({ darkMode }) => {
     // Update overtime based on new duration
     updatedRecords[dateStr][employeeId].overtime = Math.max(0, durationValue - 8).toFixed(2);
 
+    // Set the editing cell so handleEditEnd knows which record to save
+    setEditingCell({ dateStr, employeeId, field: 'duration' });
+    
     setTimeRecords(updatedRecords);
   };
+  
+  // Add a function to handle the blur event for duration inputs
+  const handleDurationBlur = (dateStr, employeeId) => {
+    // Call handleEditEnd to save changes to the database
+    handleEditEnd();
+  };
 
-  const handleEditEnd = () => {
+  const handleEditEnd = async () => {
+    if (editingCell) {
+      const { dateStr, employeeId, field } = editingCell;
+      const record = timeRecords[dateStr]?.[employeeId];
+  
+      if (record && record.id) {
+        try {
+          // Build a minimal payload
+          const updateData = {};
+  
+          // Map field to correct DB key
+          const fieldMap = {
+            clockIn: 'clockInTime',
+            clockOut: 'clockOutTime',
+            breakStart: 'breakStartTime',
+            breakEnd: 'breakEndTime',
+            duration: 'duration',
+            overtime: 'overtime',
+          };
+  
+          const apiField = fieldMap[field];
+  
+          if (apiField) {
+            updateData[apiField] = record[field] ?? null; // Explicitly set null
+          }
+  
+          // Optional: send duration/overtime only when they were edited directly
+          if (field === 'duration' || field === 'overtime') {
+            updateData.duration = record.duration;
+            updateData.overtime = record.overtime;
+          }
+  
+          // ✅ Now send only the changed field
+          await updateTimeRecord(selectedCompany.id, record.id, updateData);
+          console.log(`Updated ${apiField} for employee ${employeeId} on ${dateStr}`);
+        } catch (error) {
+          console.error('Error updating time record:', error);
+        }
+      }
+    }
+  
     setEditingCell(null);
   };
+  
+  
+  
 
   // Handle click outside of dropdowns
   useEffect(() => {
@@ -963,7 +1125,7 @@ const Timesheet = ({ darkMode }) => {
                 <th className="px-4 py-2 text-left relative">
                   <button
                     onClick={() => handleFilterClick('section')}
-                    className={`hover:text-slate-300 dark:hover:text-slate-300 ${filters.section ? 'text-slate-700 dark:text-slate-300' : ''} flex items-center justify-center space-x-1`}
+                    className={`hover:text-slate-400 dark:hover:text-slate-400 ${filters.section ? 'text-slate-700 dark:text-slate-300' : ''} flex items-center justify-center space-x-1`}
                   >
                     <span>Section</span>
                     <FunnelIcon className="h-4 w-4" />
@@ -978,7 +1140,7 @@ const Timesheet = ({ darkMode }) => {
                 <th className="px-4 py-2 text-left relative">
                   <button
                     onClick={() => handleFilterClick('outlet')}
-                    className={`hover:text-slate-300 dark:hover:text-slate-300 ${filters.outlet ? 'text-slate-700 dark:text-slate-300' : ''} flex items-center justify-center space-x-1`}
+                    className={`hover:text-slate-400 dark:hover:text-slate-400 ${filters.outlet ? 'text-slate-700 dark:text-slate-300' : ''} flex items-center justify-center space-x-1`}
                   >
                     <span>Outlet</span>
                     <FunnelIcon className="h-4 w-4" />
@@ -1140,80 +1302,111 @@ const Timesheet = ({ darkMode }) => {
 
                           {/* Time record columns - editable */}
                           {visibleColumns.login && (
-                            <td className="px-4 py-3 text-sm">
-                              {editingCell?.dateStr === dateStr &&
-                                editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'clockIn' ? (
-                                <input
-                                  type="time"
-                                  className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.clockIn).replace(':', '')}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockIn')}
-                                  onBlur={handleEditEnd}
-                                  autoFocus
-                                />
-                              ) : (
-                                <div
-                                  className="cursor-pointer flex items-center hover:text-blue-500 space-x-2"
-                                  onClick={() => handleEditStart(dateStr, employee.id, 'clockIn')}
-                                >
-                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
-                                    <ClockIcon className="h-4 w-4" />
-                                    <span>{formatTime(record.clockIn)}</span>
-                                  </div>
-                                  {record.img1 && (
-                                    <UserCircleIcon
-                                      className="h-5 w-5 text-emerald-500 cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Prevent triggering the clock-in edit
-                                        openImagePreview(record.img1);
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </td>
+  <td className="px-4 py-3 text-sm">
+    {editingCell?.dateStr === dateStr &&
+    editingCell?.employeeId === employee.id &&
+    editingCell?.field === 'clockIn' ? (
+      <div className="flex items-center space-x-2">
+        <input
+          type="time"
+          className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
+          value={formatTime(record.clockIn)}
+          onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockIn')}
+          onBlur={handleEditEnd}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleEditEnd();
+          }}
+          autoFocus
+        />
+        <TrashIcon
+          className="h-5 w-5 text-red-500 cursor-pointer hover:text-red-700"
+          onClick={() => handleDeleteTimeField(dateStr, employee.id, 'clockIn')}
+        />
+      </div>
+    ) : (
+      <div
+        className="cursor-pointer flex items-center hover:text-blue-500 space-x-2"
+        onClick={() => handleEditStart(dateStr, employee.id, 'clockIn')}
+      >
+        <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
+          <ClockIcon className="h-4 w-4" />
+          <span>{formatTime(record.clockIn)}</span>
+        </div>
+        {record.img1 && (
+          <UserCircleIcon
+            className="h-5 w-5 text-emerald-500 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the clock-in edit
+              openImagePreview(record.img1);
+            }}
+          />
+        )}
+      </div>
+    )}
+  </td>
+)}
 
-                          )}
+
+
+{visibleColumns.logout && (
+  <td className="px-4 py-3 text-sm">
+    {editingCell?.dateStr === dateStr &&
+    editingCell?.employeeId === employee.id &&
+    editingCell?.field === 'clockOut' ? (
+      <div className="flex items-center space-x-2">
+        <input
+          type="time"
+          className={`w-24 px-2 py-1 rounded border ${
+            darkMode
+              ? 'bg-slate-700 border-slate-600 text-slate-200'
+              : 'bg-white border-slate-300 text-slate-700'
+          }`}
+          value={record.clockOut ? formatTime(record.clockOut) : ''}
+          onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
+          onBlur={handleEditEnd}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleEditEnd(); // Trigger save on Enter key press
+            }
+          }}
+          autoFocus
+        />
+        <TrashIcon
+          className="h-5 w-5 text-red-500 cursor-pointer"
+          onClick={() => handleClearField(dateStr, employee.id, 'clockOut')}
+        />
+      </div>
+    ) : (
+      <div
+        className="cursor-pointer flex items-center hover:text-blue-500"
+        onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
+      >
+        <div
+          className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(
+            dateStr,
+            employee.id,
+            'clockOut'
+          )}`}
+        >
+          <ClockIcon className="h-4 w-4" />
+          <span>{formatTime(record.clockOut)}</span>
+        </div>
+        {record.img2 && (
+          <UserCircleIcon
+            className="h-5 w-5 text-emerald-500 hover:text-blue-500 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the clock-out edit
+              openImagePreview(record.img2);
+            }}
+          />
+        )}
+      </div>
+    )}
+  </td>
+)}
 
 
 
-
-                          {visibleColumns.logout && (
-                            <td className="px-4 py-3 text-sm">
-                              {editingCell?.dateStr === dateStr &&
-                                editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'clockOut' ? (
-                                <input
-                                  type="time"
-                                  className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.clockOut).replace(':', '')}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
-                                  onBlur={handleEditEnd}
-                                  autoFocus
-                                />
-                              ) : (
-                                <div
-                                  className="cursor-pointer flex items-center hover:text-blue-500"
-                                  onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
-                                >
-                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
-                                    <ClockIcon className="h-4 w-4" />
-                                    <span>{formatTime(record.clockOut)}</span>
-                                  </div>
-                                  {record.img2 && (
-                                    <UserCircleIcon
-                                      className="h-5 w-5 text-emerald-500 hover:text-blue-500 cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Prevent triggering the clock-in edit
-                                        openImagePreview(record.img2);
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                          )}
 
                           {visibleColumns.breakStart && (
                             <td className="px-4 py-3 text-sm">
@@ -1223,9 +1416,14 @@ const Timesheet = ({ darkMode }) => {
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakStart).replace(':', '')}
+                                  value={formatTime(record.breakStart)}
                                   onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakStart')}
                                   onBlur={handleEditEnd}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleEditEnd(); // Trigger save on Enter key press
+                                    }
+                                  }}
                                   autoFocus
                                 />
                               ) : (
@@ -1236,7 +1434,7 @@ const Timesheet = ({ darkMode }) => {
                                       className="cursor-pointer flex items-center hover:text-blue-500"
                                       onClick={() => handleEditStart(dateStr, employee.id, 'breakStart')}
                                     >
-                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
+                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakStart)}</span>
                                       </div>
@@ -1261,6 +1459,11 @@ const Timesheet = ({ darkMode }) => {
                                         key={`break-start-${index}`}
                                         className="cursor-pointer flex items-center hover:text-blue-500"
                                         onClick={() => handleEditStart(dateStr, employee.id, `breakStart-${index}`)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleEditEnd(); // Trigger save on Enter key press
+                                          }
+                                        }}
                                       >
                                         <div className={`flex items-center space-x-1 px-2 py-1 rounded-full`}>
                                           <ClockIcon className="h-4 w-4" />
@@ -1292,9 +1495,14 @@ const Timesheet = ({ darkMode }) => {
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakEnd).replace(':', '')}
+                                  value={formatTime(record.breakEnd)}
                                   onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakEnd')}
                                   onBlur={handleEditEnd}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleEditEnd(); // Trigger save on Enter key press
+                                    }
+                                  }}
                                   autoFocus
                                 />
                               ) : (
@@ -1305,7 +1513,7 @@ const Timesheet = ({ darkMode }) => {
                                       className="cursor-pointer flex items-center hover:text-blue-500"
                                       onClick={() => handleEditStart(dateStr, employee.id, 'breakEnd')}
                                     >
-                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
+                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakEnd)}</span>
                                       </div>
@@ -1330,6 +1538,11 @@ const Timesheet = ({ darkMode }) => {
                                         key={`break-end-${index}`}
                                         className="cursor-pointer flex items-center hover:text-blue-500"
                                         onClick={() => handleEditStart(dateStr, employee.id, `breakEnd-${index}`)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleEditEnd(); // Trigger save on Enter key press
+                                          }
+                                        }}
                                       >
                                         <div className={`flex items-center space-x-1 px-2 py-1 rounded-full`}>
                                           <ClockIcon className="h-4 w-4" />
@@ -1391,7 +1604,7 @@ const Timesheet = ({ darkMode }) => {
                           )}
                           {visibleColumns.cost && (
                             <td className="px-4 py-3 text-sm text-right">
-                              €{(parseFloat(record.duration || 0) * 10).toFixed(2)}
+                              €{calculateCost(record.duration || 0, employee.id)}
                             </td>
                           )}
                         </tr>
@@ -1520,7 +1733,7 @@ const Timesheet = ({ darkMode }) => {
                                   className="cursor-pointer flex items-center hover:text-blue-500 space-x-2"
                                   onClick={() => handleEditStart(dateStr, employee.id, 'clockIn')}
                                 >
-                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
+                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
                                     <ClockIcon className="h-4 w-4" />
                                     <span>{formatTime(record.clockIn)}</span>
                                   </div>
@@ -1550,7 +1763,7 @@ const Timesheet = ({ darkMode }) => {
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.clockOut).replace(':', '')}
+                                  value={formatTime(record.clockOut)}
                                   onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
                                   onBlur={handleEditEnd}
                                   autoFocus
@@ -1560,7 +1773,7 @@ const Timesheet = ({ darkMode }) => {
                                   className="cursor-pointer flex items-center hover:text-blue-500"
                                   onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
                                 >
-                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
+                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
                                     <ClockIcon className="h-4 w-4" />
                                     <span>{formatTime(record.clockOut)}</span>
                                   </div>
@@ -1586,7 +1799,7 @@ const Timesheet = ({ darkMode }) => {
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakStart).replace(':', '')}
+                                  value={formatTime(record.breakStart)}
                                   onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakStart')}
                                   onBlur={handleEditEnd}
                                   autoFocus
@@ -1599,7 +1812,7 @@ const Timesheet = ({ darkMode }) => {
                                       className="cursor-pointer flex items-center hover:text-blue-500"
                                       onClick={() => handleEditStart(dateStr, employee.id, 'breakStart')}
                                     >
-                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
+                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakStart)}</span>
                                       </div>
@@ -1655,7 +1868,7 @@ const Timesheet = ({ darkMode }) => {
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakEnd).replace(':', '')}
+                                  value={formatTime(record.breakEnd)}
                                   onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakEnd')}
                                   onBlur={handleEditEnd}
                                   autoFocus
@@ -1668,7 +1881,7 @@ const Timesheet = ({ darkMode }) => {
                                       className="cursor-pointer flex items-center hover:text-blue-500"
                                       onClick={() => handleEditStart(dateStr, employee.id, 'breakEnd')}
                                     >
-                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getScheduleComparison()}`}>
+                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakEnd)}</span>
                                       </div>
@@ -1752,7 +1965,7 @@ const Timesheet = ({ darkMode }) => {
                           )}
                           {visibleColumns.cost && (
                             <td className="px-4 py-3 text-sm text-right">
-                              €{calculateCost(record.duration)}
+                              €{calculateCost(record.duration || 0, employee.id)}
                             </td>
                           )}
                         </tr>

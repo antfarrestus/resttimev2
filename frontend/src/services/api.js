@@ -491,3 +491,14 @@ export const createTimeRecord = async (companyId, timeRecordData) => {
     throw error.response?.data?.message || error.message || 'Failed to create time record';
   }
 };
+
+export const updateTimeRecord = async (companyId, timeRecordId, timeRecordData) => {
+  try {
+    const id = companyId.id || companyId;
+    const response = await api.put(`/companies/${id}/timerecords/${timeRecordId}`, timeRecordData);
+    return response;
+  } catch (error) {
+    console.error('Error updating time record:', error);
+    throw error.response?.data?.message || error.message || 'Failed to update time record';
+  }
+};

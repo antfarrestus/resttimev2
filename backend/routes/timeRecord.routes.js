@@ -34,31 +34,49 @@ router.post('/', async (req, res) => {
 });
 
 // Update a time record
+const { parseISO, formatISO, isValid } = require('date-fns');
+
 router.put('/:timeRecordId', async (req, res) => {
   try {
     const { companyId, timeRecordId } = req.params;
-    const timeRecordData = req.body;
-    
-    // Find the time record
+    const data = req.body;
+
+    // Time fields to validate and convert
+    const timeFields = ['clockInTime', 'clockOutTime', 'breakStartTime', 'breakEndTime'];
+
+    for (const field of timeFields) {
+      if (data[field]) {
+        // Try to parse ISO string
+        const parsed = parseISO(data[field]);
+
+        if (!isValid(parsed)) {
+          return res.status(400).json({ message: `Invalid datetime format for ${field}` });
+        }
+
+        // Force to ISO string (UTC) to ensure Sequelize saves it correctly
+        data[field] = formatISO(parsed); // ISO format like '2025-05-01T10:00:00Z'
+      }
+    }
+
     const timeRecord = await TimeRecord.findOne({
       where: {
         id: timeRecordId,
         companyId: parseInt(companyId)
       }
     });
-    
+
     if (!timeRecord) {
       return res.status(404).json({ message: 'Time record not found' });
     }
-    
-    // Update the time record
-    await timeRecord.update(timeRecordData);
-    
+
+    await timeRecord.update(data);
+
     res.json(timeRecord);
   } catch (error) {
     console.error('Error updating time record:', error);
     res.status(500).json({ message: error.message || 'Failed to update time record' });
   }
 });
+
 
 module.exports = router;

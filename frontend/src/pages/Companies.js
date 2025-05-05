@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Menu } from '@headlessui/react';
-import { PlusIcon, PencilSquareIcon, TrashIcon, UsersIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, UsersIcon, EyeIcon, EyeSlashIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getCompanies, createCompany, updateCompany, deleteCompany, getUsers, createUser, updateUser, deleteUser, getOutlets } from '../services/api';
 
 export default function Companies({ darkMode }) {
@@ -15,6 +15,9 @@ export default function Companies({ darkMode }) {
   const [editingName, setEditingName] = useState('');
   const [expandedCompanyId, setExpandedCompanyId] = useState(null);
   const [companyUsers, setCompanyUsers] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [passwordReplaced, setPasswordReplaced] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
   const [newUserData, setNewUserData] = useState({
@@ -25,6 +28,16 @@ export default function Companies({ darkMode }) {
     showOutletDropdown: false
   });
   const [editingUser, setEditingUser] = useState(null);
+  const handleChangePassword = (e) => {
+    const newPassword = e.target.value;
+
+    // If the password is being typed after selecting the field (or it was previously empty)
+    if (!passwordReplaced && newPassword !== '') {
+      setPasswordReplaced(true);
+    }
+
+    setEditingUser({ ...editingUser, password: newPassword });
+  };
 
   const [companyOutlets, setCompanyOutlets] = useState([]);
   const [allCompanyOutlets, setAllCompanyOutlets] = useState({});
@@ -232,33 +245,46 @@ export default function Companies({ darkMode }) {
   };
 
   const handleCreateUser = async (companyId) => {
-    if (!newUserData.username.trim() || !newUserData.password.trim() || (newUserData.type !== 'Admin' && !newUserData.outlets.length)) return;
+    if (
+      !newUserData.username.trim() ||
+      !newUserData.password.trim() ||
+      (newUserData.type !== 'Admin' && !newUserData.outlets.length)
+    ) return;
 
     try {
       const userData = {
         username: newUserData.username,
         password: newUserData.password,
         type: newUserData.type,
-        outlets: newUserData.type === 'Admin' ? companyOutlets.map(o => o.id).join(',') : newUserData.outlets.map(outletName => {
-          const outlet = companyOutlets.find(o => o.name === outletName);
-          return outlet ? outlet.id : null;
-        }).filter(id => id !== null).join(','),
+        outlets: newUserData.type === 'Admin'
+          ? companyOutlets.map(o => o.id).join(',')
+          : newUserData.outlets
+            .map(outletName => {
+              const outlet = companyOutlets.find(o => o.name === outletName);
+              return outlet ? outlet.id : null;
+            })
+            .filter(id => id !== null)
+            .join(','),
         active: true
       };
+
       await createUser(companyId, userData);
       await fetchCompanyUsers(companyId);
+
       setNewUserData({
         username: '',
         password: '',
         type: 'Admin',
         outlets: [],
       });
+
       setIsUserModalOpen(false);
     } catch (error) {
       console.error('Error creating user:', error);
       alert('Failed to create user: ' + (error.response?.data?.message || error.message));
     }
   };
+
 
   const handleSaveUser = async () => {
     if (!editingUser) return;
@@ -283,19 +309,24 @@ export default function Companies({ darkMode }) {
 
   const handleEditUser = async (companyId, user) => {
     try {
-      // Fetch outlets for the company
+      // Reset visibility flags on edit start
+      setShowEditPassword(false);
+      setPasswordReplaced(false);
+
       const outlets = await getOutlets(companyId);
       setCompanyOutlets(outlets.filter(outlet => outlet.active));
-      
-      // Set the editing user with proper outlet information
-      const userOutlets = user.outletAccess === 'All' ? ['All'] : 
-                         user.outletAccess ? user.outletAccess.split(',').map(id => {
-                           const outlet = outlets.find(o => o.id.toString() === id);
-                           return outlet ? outlet.name : null;
-                         }).filter(name => name !== null) : [];
-      
-      setEditingUser({ 
-        ...user, 
+
+      const userOutlets = user.outletAccess === 'All'
+        ? ['All']
+        : user.outletAccess
+          ? user.outletAccess.split(',').map(id => {
+            const outlet = outlets.find(o => o.id.toString() === id);
+            return outlet ? outlet.name : null;
+          }).filter(name => name !== null)
+          : [];
+
+      setEditingUser({
+        ...user,
         companyId,
         type: user.role.charAt(0).toUpperCase() + user.role.slice(1),
         outlets: userOutlets
@@ -348,13 +379,13 @@ export default function Companies({ darkMode }) {
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700/50">
           <thead className="bg-slate-50 dark:bg-slate-800/50">
             <tr>
-              <th 
+              <th
                 className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-300"
                 onClick={() => handleSort('id')}
               >
                 ID {sortConfig.key === 'id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </th>
-              <th 
+              <th
                 className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-300"
                 onClick={() => handleSort('name')}
               >
@@ -479,14 +510,36 @@ export default function Companies({ darkMode }) {
                                   </td>
                                   <td className="px-4 py-2 text-sm dark:text-slate-300">
                                     {editingUser?.id === user.id ? (
-                                      <input
-                                        type="text"
-                                        value={editingUser.password}
-                                        onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
-                                        className="w-32 min-w-0 px-2 py-1 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                                      />
-                                    ) : '•••••'}
+                                      <div className="relative w-32">
+                                        <input
+                                          type={
+                                            passwordReplaced
+                                              ? (showEditPassword ? 'text' : 'password')
+                                              : 'password'
+                                          }
+                                          value={editingUser.password}
+                                          onChange={handleChangePassword}
+                                          className="w-full min-w-0 px-2 py-1 pr-8 rounded border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setShowEditPassword(prev => !prev)}
+                                          className={`absolute right-1 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-300 ${!passwordReplaced ? 'cursor-not-allowed opacity-50' : ''
+                                            }`}
+                                          disabled={!passwordReplaced}
+                                        >
+                                          {showEditPassword ? (
+                                            <EyeSlashIcon className="h-4 w-4" />
+                                          ) : (
+                                            <EyeIcon className="h-4 w-4" />
+                                          )}
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      '•••••'
+                                    )}
                                   </td>
+
                                   <td className="px-4 py-2 text-sm dark:text-slate-300">
                                     {editingUser?.id === user.id ? (
                                       <select
@@ -643,7 +696,7 @@ export default function Companies({ darkMode }) {
                   id="companyName"
                   value={newCompanyName}
                   onChange={(e) => setNewCompanyName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                   placeholder="Enter company name"
                   required
                 />
@@ -684,7 +737,7 @@ export default function Companies({ darkMode }) {
                       type="text"
                       value={newUserData.username}
                       onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
                       required
                     />
                   </div>
@@ -693,13 +746,28 @@ export default function Companies({ darkMode }) {
                     <label className="block text-sm font-medium dark:text-slate-300 text-slate-700 mb-2">
                       Password
                     </label>
-                    <input
-                      type="text"
-                      value={newUserData.password}
-                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={newUserData.password}
+                        onChange={(e) =>
+                          setNewUserData({ ...newUserData, password: e.target.value })
+                        }
+                        className="w-full px-3 py-2 pr-10 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-300"
+                      >
+                        {showPassword ? (
+                          <EyeSlashIcon className="h-5 w-5" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -711,7 +779,7 @@ export default function Companies({ darkMode }) {
                     <select
                       value={newUserData.type}
                       onChange={(e) => setNewUserData({ ...newUserData, type: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 cursor-pointer"
                     >
                       {userTypes.map((type) => (
                         <option key={type} value={type}>{type}</option>
@@ -727,7 +795,7 @@ export default function Companies({ darkMode }) {
                       <button
                         type="button"
                         onClick={() => setNewUserData({ ...newUserData, showOutletDropdown: !newUserData.showOutletDropdown })}
-                        className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500 text-left flex justify-between items-center"
+                        className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 text-left flex justify-between items-center"
                       >
                         <span>{newUserData.outlets.length ? (newUserData.outlets.includes('All') ? 'All Outlets' : `${newUserData.outlets.length} selected`) : 'Select outlets'}</span>
                         <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${newUserData.showOutletDropdown ? 'transform rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">

@@ -62,3 +62,13 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
 }
+
+/* Tailwind-compatible custom class */
+.remove-spinner::-webkit-outer-spin-button,
+.remove-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.remove-spinner {
+  -moz-appearance: textfield;
+}

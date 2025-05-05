@@ -36,7 +36,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="max-w-sm w-full space-y-6 p-6 rounded-xl shadow-2xl backdrop-blur-sm border dark:bg-slate-800/50 dark:border-slate-700/50 bg-white border-slate-200">
         <div>
-          <h2 className="text-center text-2xl font-bold dark:text-slate-100 text-slate-900">Restime</h2>
+          <h2 className="text-center text-2xl font-bold dark:text-slate-100 text-slate-900">Chronos</h2>
         </div>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-3 rounded-md">
@@ -85,13 +85,7 @@ export default function Login() {
             </button>
           </div>
         </form>
-        <button 
-          type="button"
-          onClick={testBackendConnection}
-          className="mt-2 text-sm text-slate-500 dark:text-slate-400 hover:underline w-full text-center"
-        >
-          Test Backend Connection
-        </button>
+      
       </div>
     </div>
   );
