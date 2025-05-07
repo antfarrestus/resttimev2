@@ -22,12 +22,13 @@ const deviceController = {
   // Create a new device
   createDevice: async (req, res) => {
     try {
-      const { name, password, outletId } = req.body;
+      const { name, password, outletId, pinRequired } = req.body;
       const device = await Device.create({
         name,
         password, // Store password as plain text
         outletId,
-        companyId: req.user.companyId
+        companyId: req.user.companyId,
+        pinRequired
       });
       res.status(201).json(device);
     } catch (error) {
@@ -40,7 +41,7 @@ const deviceController = {
   updateDevice: async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, password, outletId, active } = req.body;
+      const { name, password, outletId, active, pinRequired } = req.body;
       
       const device = await Device.findOne({
         where: { 
@@ -57,7 +58,8 @@ const deviceController = {
         name,
         password, // Update password as plain text
         outletId,
-        active
+        active,
+        pinRequired
       });
 
       res.json(device);

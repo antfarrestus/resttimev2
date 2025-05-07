@@ -30,6 +30,10 @@ const Device = sequelize.define('Device', {
   lastSync: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  pinRequired: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
   }
 }, {
   timestamps: true

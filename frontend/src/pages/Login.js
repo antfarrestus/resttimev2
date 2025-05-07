@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserIcon, KeyIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
-const API_URL = process.env.REACT_APP_API_URL
+
+const API_URL = process.env.REACT_APP_API_URL;
+
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -12,7 +14,6 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
     try {
       await login(username, password);
       setUsername('');
@@ -22,22 +23,27 @@ export default function Login() {
     }
   };
 
-  const testBackendConnection = async () => {
-    try {
-      const response = await axios.get(API_URL);
-      const data = await response.data;
-      alert(`Backend connection successful: ${JSON.stringify(data)}`);
-    } catch (error) {
-      alert(`Backend connection failed: ${error}`);
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="max-w-sm w-full space-y-6 p-6 rounded-xl shadow-2xl backdrop-blur-sm border dark:bg-slate-800/50 dark:border-slate-700/50 bg-white border-slate-200">
-        <div>
-          <h2 className="text-center text-2xl font-bold dark:text-slate-100 text-slate-900">Chronos</h2>
+    <div className="relative min-h-screen flex items-center justify-center bg-slate-100 overflow-hidden">
+      {/* Blurred color blobs */}
+      <div className="absolute w-72 h-72 bg-gradient-to-tr from-green-300 to-blue-400 opacity-30 rounded-full blur-3xl top-10 -left-20"></div>
+      <div className="absolute w-96 h-96 bg-gradient-to-br from-blue-400 to-purple-400 opacity-30 rounded-full blur-3xl -bottom-20 right-0"></div>
+      <div className="absolute w-80 h-80 bg-teal-300 opacity-20 rounded-full blur-3xl -top-16 right-1/3"></div>
+
+
+      {/* Login Card */}
+      <div className="relative z-10 max-w-sm w-full space-y-6 p-6 rounded-xl shadow-2xl backdrop-blur-md border dark:bg-slate-800/50 dark:border-slate-700/50 bg-white border-slate-200">
+        <div className="flex justify-center">
+          <div className="flex flex-col items-center">
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="w-48 h-auto mb-4 object-contain"
+            />
+            <h2 className="text-2xl font-bold dark:text-slate-100 text-slate-900">Chronos</h2>
+          </div>
         </div>
+
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-3 rounded-md">
             <div className="relative">
@@ -79,13 +85,12 @@ export default function Login() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-slate-600 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors duration-200"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-emerald-600/60 hover:bg-emerald-700/60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors duration-200"
             >
               Sign in
             </button>
           </div>
         </form>
-      
       </div>
     </div>
   );

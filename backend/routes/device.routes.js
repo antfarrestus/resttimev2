@@ -56,7 +56,8 @@ router.post('/', async (req, res) => {
       password,
       outletId,
       companyId: req.params.companyId,
-      active: true
+      active: true,
+      pinRequired: Boolean(req.body.pinRequired)
     });
 
     res.status(201).json(device);
