@@ -26,7 +26,9 @@ const Timesheet = ({ darkMode }) => {
   const [scheduleComparison, setScheduleComparison] = useState({});
   const [editingCell, setEditingCell] = useState(null);
   const handleEditStart = (dateStr, employeeId, field) => {
-    setEditingCell({ dateStr, employeeId, field });
+    // Capture the original value when editing starts
+    const originalValue = timeRecords[dateStr]?.[employeeId]?.[field] || null;
+    setEditingCell({ dateStr, employeeId, field, originalValue });
   };
   const getInitialDateRange = () => {
     const saved = sessionStorage.getItem('dateRange');
@@ -51,6 +53,13 @@ const Timesheet = ({ darkMode }) => {
 
     // Ensure field exists for the employee and date
     if (updatedRecords[dateStr] && updatedRecords[dateStr][employeeId]) {
+      // Capture the original time value before clearing it
+      let originalTimeValue = '-';
+      if (updatedRecords[dateStr][employeeId][field]) {
+        originalTimeValue = formatTime(updatedRecords[dateStr][employeeId][field]);
+      }
+      
+      // Clear the field
       updatedRecords[dateStr][employeeId][field] = null;
 
       // Optionally clear duration and overtime if clockIn/Out is cleared
@@ -71,13 +80,18 @@ const Timesheet = ({ darkMode }) => {
   const handleEditEnd = async () => {
     if (!editingCell) return;
     
-    const { dateStr, employeeId, field } = editingCell;
+    const { dateStr, employeeId, field, originalValue } = editingCell;
+    
+    // Now get the current (potentially updated) record
     const record = timeRecords[dateStr]?.[employeeId];
     
     if (!record) {
       setEditingCell(null);
       return;
     }
+
+    // Format the original time value for display
+    let originalTimeValue = originalValue ? formatTime(originalValue) : '-';
     
     if (record && record.id) {
       try {
@@ -97,25 +111,10 @@ const Timesheet = ({ darkMode }) => {
         const apiField = fieldMap[field];
 
         if (apiField) {
-          updateData[apiField] = record[field] ?? null; // Explicitly set null
-          
           // If this is a time field (not duration/overtime), prompt for a note
           if (['clockInTime', 'clockOutTime', 'breakStartTime', 'breakEndTime'].includes(apiField)) {
-            // Get the original time value for reference
-            const fieldMap = {
-              clockIn: 'clockInTime',
-              clockOut: 'clockOutTime',
-              breakStart: 'breakStartTime',
-              breakEnd: 'breakEndTime',
-              duration: 'duration',
-              overtime: 'overtime',
-            };
-            
-            const apiField = fieldMap[field];
-            let originalTimeValue = '-';
-            if (apiField && record[apiField]) {
-              originalTimeValue = formatTime(record[apiField]);
-            }
+            // Now update the data
+            updateData[apiField] = record[field] ?? null; // Explicitly set null
             
             const defaultNote = `Original ${field.charAt(0).toUpperCase() + field.slice(1)} time: ${originalTimeValue}`;
             const noteField = `${field}Note`;
@@ -134,6 +133,9 @@ const Timesheet = ({ darkMode }) => {
             
             setEditingCell(null);
             return; // Exit early as we'll handle the note separately
+          } else {
+            // For non-time fields
+            updateData[apiField] = record[field] ?? null; // Explicitly set null
           }
         }
 
@@ -141,6 +143,42 @@ const Timesheet = ({ darkMode }) => {
         if (field === 'duration' || field === 'overtime') {
           updateData.duration = record.duration;
           updateData.overtime = record.overtime;
+        }
+        
+        // Handle break array fields (like breakStart-0, breakEnd-1, etc.)
+        if (field.includes('-')) {
+          const [baseField, indexStr] = field.split('-');
+          const index = parseInt(indexStr);
+          
+          if (record.breaks && record.breaks[index]) {
+            // Map to the correct API field name based on the break index
+            const breakFieldMap = {
+              'breakStart': ['breakStartTime', 'break2StartTime', 'break3StartTime'],
+              'breakEnd': ['breakEndTime', 'break2EndTime', 'break3EndTime']
+            };
+            
+            const apiBreakField = breakFieldMap[baseField][index];
+            const breakField = baseField === 'breakStart' ? 'start' : 'end';
+            
+            if (apiBreakField) {
+              updateData[apiBreakField] = record.breaks[index][breakField] ?? null;
+              
+              // Create a note for the break field
+              const noteFieldMap = {
+                'breakStartTime': 'breakStartNote',
+                'breakEndTime': 'breakEndNote',
+                'break2StartTime': 'break2StartNote',
+                'break2EndTime': 'break2EndNote',
+                'break3StartTime': 'break3StartNote',
+                'break3EndTime': 'break3EndNote'
+              };
+              
+              const noteField = noteFieldMap[apiBreakField];
+              const defaultNote = `Original ${baseField.charAt(0).toUpperCase() + baseField.slice(1)} time: ${originalTimeValue}`;
+              
+              updateData[noteField] = defaultNote;
+            }
+          }
         }
 
         // Now send only the changed field
@@ -339,6 +377,12 @@ const Timesheet = ({ darkMode }) => {
     const updatedRecords = { ...timeRecords };
     if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
     if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
+
+    // Capture the original time value before clearing it
+    let originalTimeValue = '-';
+    if (updatedRecords[dateStr][employeeId][field]) {
+      originalTimeValue = formatTime(updatedRecords[dateStr][employeeId][field]);
+    }
 
     updatedRecords[dateStr][employeeId][field] = null; // Ensure UI data is null
     setEditingCell({ dateStr, employeeId, field });
@@ -663,56 +707,88 @@ const Timesheet = ({ darkMode }) => {
     // Validate hours and minutes are within valid ranges
     if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return;
 
+    // If this is the first edit for this cell, store the original value in editingCell
+    // This ensures we capture the original time before any changes
+    if (!editingCell || 
+        editingCell.dateStr !== dateStr || 
+        editingCell.employeeId !== employeeId || 
+        editingCell.field !== field) {
+      // Store the original record before making any changes
+      const originalValue = timeRecords[dateStr]?.[employeeId]?.[field] || null;
+      setEditingCell({ 
+        dateStr, 
+        employeeId, 
+        field,
+        originalValue // Store the original value for reference
+      });
+    }
+
     // ✅ Defensive copy of records
     const updatedRecords = { ...timeRecords };
     if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
     if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
 
-    const existingRaw = updatedRecords[dateStr][employeeId][field];
+    // Check if this is a break array field (like breakStart-0, breakEnd-1, etc.)
+    if (field.includes('-')) {
+      const [baseField, indexStr] = field.split('-');
+      const index = parseInt(indexStr);
+      
+      // Ensure the breaks array exists
+      if (!updatedRecords[dateStr][employeeId].breaks) {
+        updatedRecords[dateStr][employeeId].breaks = [];
+      }
+      
+      // Ensure the break at this index exists
+      if (!updatedRecords[dateStr][employeeId].breaks[index]) {
+        updatedRecords[dateStr][employeeId].breaks[index] = {};
+      }
+      
+      // Update the appropriate field in the break
+      const breakField = baseField === 'breakStart' ? 'start' : 'end';
+      const localTimeStr = `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`;
+      updatedRecords[dateStr][employeeId].breaks[index][breakField] = localTimeStr;
+    } else {
+      const existingRaw = updatedRecords[dateStr][employeeId][field];
 
-    let baseDate;
-    try {
-      baseDate = existingRaw && typeof existingRaw === 'string' && existingRaw.includes('T')
-        ? parseISO(existingRaw)
-        : new Date(); // Fallback: today
-    } catch (err) {
-      console.error('parseISO error:', err, 'Value:', existingRaw);
-      baseDate = new Date(); // Safe fallback
-    }
-
-    if (!isValid(baseDate)) baseDate = new Date();
-
-    // ✅ Apply new time
-    // Add Z suffix to indicate UTC time, matching the format used in ManualTimeEntryModal
-    const localTimeStr = `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`;
-    updatedRecords[dateStr][employeeId][field] = localTimeStr;
-
-
-
-    // ✅ Recalculate duration and overtime
-    if (['clockIn', 'clockOut', 'breakStart', 'breakEnd'].includes(field)) {
-      const record = updatedRecords[dateStr][employeeId];
+      let baseDate;
       try {
-        // Check if all required fields exist before parsing
-        if (record.clockIn && record.clockOut && record.breakStart && record.breakEnd) {
-          const clockIn = parseISO(record.clockIn);
-          const clockOut = parseISO(record.clockOut);
-          const breakStart = parseISO(record.breakStart);
-          const breakEnd = parseISO(record.breakEnd);
+        baseDate = existingRaw && typeof existingRaw === 'string' && existingRaw.includes('T')
+          ? parseISO(existingRaw)
+          : new Date(); // Fallback: today
+      } catch (err) {
+        console.error('parseISO error:', err, 'Value:', existingRaw);
+        baseDate = new Date(); // Safe fallback
+      }
 
-          if (isValid(clockIn) && isValid(clockOut) && isValid(breakStart) && isValid(breakEnd)) {
-            const workMinutes = (clockOut - clockIn) / 60000 - (breakEnd - breakStart) / 60000;
-            record.duration = (workMinutes / 60).toFixed(2);
-            record.overtime = Math.max(0, (workMinutes / 60 - 8)).toFixed(2);
+      if (!isValid(baseDate)) baseDate = new Date();
+
+      // ✅ Apply new time
+      // Add Z suffix to indicate UTC time, matching the format used in ManualTimeEntryModal
+      const localTimeStr = `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`;
+      updatedRecords[dateStr][employeeId][field] = localTimeStr;
+
+      // ✅ Recalculate duration and overtime
+      if (['clockIn', 'clockOut', 'breakStart', 'breakEnd'].includes(field)) {
+        const record = updatedRecords[dateStr][employeeId];
+        try {
+          // Check if all required fields exist before parsing
+          if (record.clockIn && record.clockOut && record.breakStart && record.breakEnd) {
+            const clockIn = parseISO(record.clockIn);
+            const clockOut = parseISO(record.clockOut);
+            const breakStart = parseISO(record.breakStart);
+            const breakEnd = parseISO(record.breakEnd);
+
+            if (isValid(clockIn) && isValid(clockOut) && isValid(breakStart) && isValid(breakEnd)) {
+              const workMinutes = (clockOut - clockIn) / 60000 - (breakEnd - breakStart) / 60000;
+              record.duration = (workMinutes / 60).toFixed(2);
+              record.overtime = Math.max(0, (workMinutes / 60 - 8)).toFixed(2);
+            }
           }
+        } catch (e) {
+          console.warn('Duration/overtime calculation skipped due to invalid data:', e);
         }
-      } catch (e) {
-        console.warn('Duration/overtime calculation skipped due to invalid data:', e);
       }
     }
-
-    // Set the editing cell so handleEditEnd knows which record to save
-    setEditingCell({ dateStr, employeeId, field });
 
     setTimeRecords(updatedRecords);
   };
@@ -1533,12 +1609,16 @@ const Timesheet = ({ darkMode }) => {
                             <td className="px-4 py-3 text-sm">
                               {editingCell?.dateStr === dateStr &&
                                 editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'breakStart' ? (
+                                (editingCell?.field === 'breakStart' || editingCell?.field.startsWith('breakStart-')) ? (
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakStart)}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakStart')}
+                                  value={editingCell?.field === 'breakStart' 
+                                    ? formatTime(record.breakStart) 
+                                    : (editingCell?.field.startsWith('breakStart-') && record.breaks) 
+                                      ? formatTime(record.breaks[parseInt(editingCell.field.split('-')[1])].start)
+                                      : ''}
+                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, editingCell.field)}
                                   onBlur={handleEditEnd}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -1564,7 +1644,7 @@ const Timesheet = ({ darkMode }) => {
                                             title={record.breakStartNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setViewNoteText(record.clockInNote);
+                                              setViewNoteText(record.breakStartNote);
                                               setIsNoteViewOpen(true);
                                             }}
                                           />
@@ -1591,11 +1671,6 @@ const Timesheet = ({ darkMode }) => {
                                         key={`break-start-${index}`}
                                         className="cursor-pointer flex items-center hover:text-blue-500"
                                         onClick={() => handleEditStart(dateStr, employee.id, `breakStart-${index}`)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleEditEnd(); // Trigger save on Enter key press
-                                          }
-                                        }}
                                       >
                                         <div className={`flex items-center space-x-1 px-2 py-1 rounded-full`}>
                                           <ClockIcon className="h-4 w-4" />
@@ -1623,12 +1698,16 @@ const Timesheet = ({ darkMode }) => {
                             <td className="px-4 py-3 text-sm">
                               {editingCell?.dateStr === dateStr &&
                                 editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'breakEnd' ? (
+                                (editingCell?.field === 'breakEnd' || editingCell?.field.startsWith('breakEnd-')) ? (
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakEnd)}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakEnd')}
+                                  value={editingCell?.field === 'breakEnd' 
+                                    ? formatTime(record.breakEnd) 
+                                    : (editingCell?.field.startsWith('breakEnd-') && record.breaks) 
+                                      ? formatTime(record.breaks[parseInt(editingCell.field.split('-')[1])].end)
+                                      : ''}
+                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, editingCell.field)}
                                   onBlur={handleEditEnd}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -1654,7 +1733,7 @@ const Timesheet = ({ darkMode }) => {
                                             title={record.breakEndNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setViewNoteText(record.clockInNote);
+                                              setViewNoteText(record.breakEndNote);
                                               setIsNoteViewOpen(true);
                                             }}
                                           />
@@ -1756,7 +1835,7 @@ const Timesheet = ({ darkMode }) => {
                                         title={record.clockOutNote}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setViewNoteText(record.clockInNote);
+                                          setViewNoteText(record.clockOutNote);
                                           setIsNoteViewOpen(true);
                                         }}
                                       />
@@ -1928,14 +2007,23 @@ const Timesheet = ({ darkMode }) => {
                               {editingCell?.dateStr === dateStr &&
                                 editingCell?.employeeId === employee.id &&
                                 editingCell?.field === 'clockIn' ? (
-                                <input
-                                  type="time"
-                                  className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.clockIn).replace(':', '')}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockIn')}
-                                  onBlur={handleEditEnd}
-                                  autoFocus
-                                />
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="time"
+                                    className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
+                                    value={formatTime(record.clockIn)}
+                                    onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockIn')}
+                                    onBlur={handleEditEnd}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleEditEnd();
+                                    }}
+                                    autoFocus
+                                  />
+                                  <TrashIcon
+                                    className="h-5 w-5 text-red-500 cursor-pointer hover:text-red-700"
+                                    onClick={() => handleDeleteTimeField(dateStr, employee.id, 'clockIn')}
+                                  />
+                                </div>
                               ) : (
                                 <div
                                   className="cursor-pointer flex items-center hover:text-blue-500 space-x-2"
@@ -1944,7 +2032,17 @@ const Timesheet = ({ darkMode }) => {
                                   <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
                                     <ClockIcon className="h-4 w-4" />
                                     <span>{formatTime(record.clockIn)}</span>
-                                    {record.clockInNote && (
+                                  </div>
+                                  {record.img1 && (
+                                    <UserCircleIcon
+                                      className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openImagePreview(record.img1);
+                                      }}
+                                    />
+                                  )}
+                                  {record.clockInNote && (
                                       <PencilSquareIcon 
                                         className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
                                         title={record.clockInNote}
@@ -1953,74 +2051,34 @@ const Timesheet = ({ darkMode }) => {
                                           setViewNoteText(record.clockInNote);
                                           setIsNoteViewOpen(true);
                                         }}
+                                        
                                       />
                                     )}
-                                  </div>
-                                  {record.img1 && (
-                                    <UserCircleIcon
-                                      className="h-5 w-5 text-emerald-500 cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Prevent triggering the clock-in edit
-                                        openImagePreview(record.img1);
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </td>
-
-                          )}
-
-
-
-
-                          {visibleColumns.logout && (
-                            <td className="px-4 py-3 text-sm">
-                              {editingCell?.dateStr === dateStr &&
-                                editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'clockOut' ? (
-                                <input
-                                  type="time"
-                                  className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.clockOut)}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
-                                  onBlur={handleEditEnd}
-                                  autoFocus
-                                />
-                              ) : (
-                                <div
-                                  className="cursor-pointer flex items-center hover:text-blue-500"
-                                  onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
-                                >
-                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
-                                    <ClockIcon className="h-4 w-4" />
-                                    <span>{formatTime(record.clockOut)}</span>
-                                  </div>
-                                  {record.img2 && (
-                                    <UserCircleIcon
-                                      className="h-5 w-5 text-emerald-500 hover:text-blue-500 cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Prevent triggering the clock-in edit
-                                        openImagePreview(record.img2);
-                                      }}
-                                    />
-                                  )}
                                 </div>
                               )}
                             </td>
                           )}
-
+                          
                           {visibleColumns.breakStart && (
                             <td className="px-4 py-3 text-sm">
                               {editingCell?.dateStr === dateStr &&
                                 editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'breakStart' ? (
+                                (editingCell?.field === 'breakStart' || editingCell?.field.startsWith('breakStart-')) ? (
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakStart)}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakStart')}
+                                  value={editingCell?.field === 'breakStart' 
+                                    ? formatTime(record.breakStart) 
+                                    : (editingCell?.field.startsWith('breakStart-') && record.breaks) 
+                                      ? formatTime(record.breaks[parseInt(editingCell.field.split('-')[1])].start)
+                                      : ''}
+                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, editingCell.field)}
                                   onBlur={handleEditEnd}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleEditEnd(); // Trigger save on Enter key press
+                                    }
+                                  }}
                                   autoFocus
                                 />
                               ) : (
@@ -2040,7 +2098,7 @@ const Timesheet = ({ darkMode }) => {
                                             title={record.breakStartNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setViewNoteText(record.clockInNote);
+                                              setViewNoteText(record.breakStartNote);
                                               setIsNoteViewOpen(true);
                                             }}
                                           />
@@ -2094,13 +2152,22 @@ const Timesheet = ({ darkMode }) => {
                             <td className="px-4 py-3 text-sm">
                               {editingCell?.dateStr === dateStr &&
                                 editingCell?.employeeId === employee.id &&
-                                editingCell?.field === 'breakEnd' ? (
+                                (editingCell?.field === 'breakEnd' || editingCell?.field.startsWith('breakEnd-')) ? (
                                 <input
                                   type="time"
                                   className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-                                  value={formatTime(record.breakEnd)}
-                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'breakEnd')}
+                                  value={editingCell?.field === 'breakEnd' 
+                                    ? formatTime(record.breakEnd) 
+                                    : (editingCell?.field.startsWith('breakEnd-') && record.breaks) 
+                                      ? formatTime(record.breaks[parseInt(editingCell.field.split('-')[1])].end)
+                                      : ''}
+                                  onChange={(e) => handleTimeChange(e, dateStr, employee.id, editingCell.field)}
                                   onBlur={handleEditEnd}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleEditEnd(); // Trigger save on Enter key press
+                                    }
+                                  }}
                                   autoFocus
                                 />
                               ) : (
@@ -2115,12 +2182,12 @@ const Timesheet = ({ darkMode }) => {
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakEnd)}</span>
                                         {record.breakEndNote && (
-                                          <PencilSquareIcon
+                                          <PencilSquareIcon 
                                             className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
                                             title={record.breakEndNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setViewNoteText(record.clockInNote);
+                                              setViewNoteText(record.breakEndNote);
                                               setIsNoteViewOpen(true);
                                             }}
                                           />
@@ -2147,6 +2214,11 @@ const Timesheet = ({ darkMode }) => {
                                         key={`break-end-${index}`}
                                         className="cursor-pointer flex items-center hover:text-blue-500"
                                         onClick={() => handleEditStart(dateStr, employee.id, `breakEnd-${index}`)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            handleEditEnd(); // Trigger save on Enter key press
+                                          }
+                                        }}
                                       >
                                         <div className={`flex items-center space-x-1 px-2 py-1 rounded-full`}>
                                           <ClockIcon className="h-4 w-4" />
@@ -2169,6 +2241,74 @@ const Timesheet = ({ darkMode }) => {
                               )}
                             </td>
                           )}
+
+{visibleColumns.logout && (
+                            <td className="px-4 py-3 text-sm">
+                              {editingCell?.dateStr === dateStr &&
+                                editingCell?.employeeId === employee.id &&
+                                editingCell?.field === 'clockOut' ? (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="time"
+                                    className={`w-24 px-2 py-1 rounded border ${darkMode
+                                        ? 'bg-slate-700 border-slate-600 text-slate-200'
+                                        : 'bg-white border-slate-300 text-slate-700'
+                                      }`}
+                                    value={record.clockOut ? formatTime(record.clockOut) : ''}
+                                    onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
+                                    onBlur={handleEditEnd}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleEditEnd(); // Trigger save on Enter key press
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                  <TrashIcon
+                                    className="h-5 w-5 text-red-500 cursor-pointer"
+                                    onClick={() => handleClearField(dateStr, employee.id, 'clockOut')}
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  className="cursor-pointer flex items-center hover:text-blue-500"
+                                  onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
+                                >
+                                  <div
+                                    className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(
+                                      dateStr,
+                                      employee.id,
+                                      'clockOut'
+                                    )}`}
+                                  >
+                                    <ClockIcon className="h-4 w-4" />
+                                    <span>{formatTime(record.clockOut)}</span>
+                                    {record.clockOutNote && (
+                                      <PencilSquareIcon 
+                                        className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                        title={record.clockOutNote}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setViewNoteText(record.clockOutNote);
+                                          setIsNoteViewOpen(true);
+                                        }}
+                                      />
+                                    )}
+                                  </div>
+                                  {record.img2 && (
+                                    <UserCircleIcon
+                                      className="h-5 w-5 text-emerald-500 hover:text-blue-500 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent triggering the clock-out edit
+                                        openImagePreview(record.img2);
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          )}
+
                           {visibleColumns.duration && (
                             <td className="px-4 py-3 text-sm text-right">
                               {editingCell?.dateStr === dateStr &&

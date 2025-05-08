@@ -206,15 +206,13 @@ const ManualTimeEntryModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+      <div className="fixed inset-0 transition-opacity" aria-hidden="true">
           <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         </div>
-        
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        <div 
-          className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'bg-slate-800' : 'bg-white'}`}
-        >
+        <div
+        className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full ${darkMode ? 'bg-slate-800' : 'bg-white'}`}
+      >
           <div className={`${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-black'} px-4 pt-5 pb-4 sm:p-6 sm:pb-4`}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Manual Time Entry</h3>
@@ -228,19 +226,26 @@ const ManualTimeEntryModal = ({
             
             <form onSubmit={handleSubmit}>
               {/* Date Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Date</label>
-                <DatePicker
-                  selected={formData.date}
-                  onChange={handleDateChange}
-                  dateFormat="dd/MM/yyyy"
-                  className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+  <div>
+    <label className="block text-sm font-medium mb-1">Date</label>
+    <DatePicker
+      selected={formData.date}
+      onChange={handleDateChange}
+      dateFormat="dd/MM/yyyy"
+      className={`w-full cursor-pointer p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
+    />
+  </div>
+
+  {/* Empty column to balance layout */}
+  <div></div>
+</div>
               
               {/* Employee Selection */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="mb-4">
   <label className="block text-sm font-medium mb-1">Employee</label>
+  
   <div className="relative">
     <input
       type="text"
@@ -256,7 +261,7 @@ const ManualTimeEntryModal = ({
         setFormData({ ...formData, employeeId: '' });
         setSearchTerm(e.target.value);
       }}
-      placeholder="Search by name or employee number"
+      placeholder="Search by name or number"
       className={`w-full p-2 pr-10 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
       readOnly={!!formData.employeeId}
     />
@@ -292,6 +297,7 @@ const ManualTimeEntryModal = ({
             >
               {employee.firstName} {employee.lastName} ({employee.employeeNumber || 'No ID'})
             </div>
+            
           ))
         )}
       </div>
@@ -300,7 +306,7 @@ const ManualTimeEntryModal = ({
 </div>
               
               {/* Section Selection */}
-              <div className="mb-4">
+<div>
                 <label className="block text-sm font-medium mb-1">Section</label>
                 <select
                   name="sectionId"
@@ -313,48 +319,58 @@ const ManualTimeEntryModal = ({
                     <option key={section.id} value={section.id}>{section.name}</option>
                   ))}
                 </select>
+                </div>
               </div>
               
-              {/* Clock In/Out Times */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Clock In Time</label>
-                  <input
-                    type="time"
-                    name="clockIn"
-                    value={formData.clockIn}
-                    onChange={handleInputChange}
-                    required
-                    className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
-                  />
-                  <input
-                    type="text"
-                    name="clockInNote"
-                    value={formData.clockInNote}
-                    onChange={handleInputChange}
-                    placeholder="Note"
-                    className={`w-full p-2 mt-1 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Clock Out Time</label>
-                  <input
-                    type="time"
-                    name="clockOut"
-                    value={formData.clockOut}
-                    onChange={handleInputChange}
-                    className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
-                  />
-                  <input
-                    type="text"
-                    name="clockOutNote"
-                    value={formData.clockOutNote}
-                    onChange={handleInputChange}
-                    placeholder="Note"
-                    className={`w-full p-2 mt-1 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
-                  />
-                </div>
+              {/* Clock In/Out Times + Notes - 4 columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+              {/* Clock In */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Clock In Time</label>
+                <input
+                  type="time"
+                  name="clockIn"
+                  value={formData.clockIn}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Clock In Note</label>
+                <input
+                  type="text"
+                  name="clockInNote"
+                  value={formData.clockInNote}
+                  onChange={handleInputChange}
+                  placeholder="Note"
+                  className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
+                />
+              </div>
+
+              {/* Clock Out */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Clock Out Time</label>
+                <input
+                  type="time"
+                  name="clockOut"
+                  value={formData.clockOut}
+                  onChange={handleInputChange}
+                  className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Clock Out Note</label>
+                <input
+                  type="text"
+                  name="clockOutNote"
+                  value={formData.clockOutNote}
+                  onChange={handleInputChange}
+                  placeholder="Note"
+                  className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
+                />
+              </div>
+            </div>
               
               {/* Breaks */}
               <div className="mb-4">
@@ -381,7 +397,7 @@ const ManualTimeEntryModal = ({
                         <MinusIcon className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-xs mb-1">Start Time</label>
                         <input
@@ -400,8 +416,7 @@ const ManualTimeEntryModal = ({
                           className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
                         />
                       </div>
-                    </div>
-                    <div className="mt-2">
+                      <div>
                       <label className="block text-xs mb-1">Note</label>
                       <input
                         type="text"
@@ -410,6 +425,7 @@ const ManualTimeEntryModal = ({
                         placeholder="Note"
                         className={`w-full p-2 rounded-md ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-black border-gray-300'} border`}
                       />
+                    </div>
                     </div>
                   </div>
                 ))}
