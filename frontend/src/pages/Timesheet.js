@@ -4,9 +4,11 @@ import { format, startOfWeek, add, sub, parseISO, formatISO, isValid, endOfMonth
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { getOutlets, getSections, getEmployees, getTimeRecords, getScheduleComparison, createTimeRecord, updateTimeRecord } from '../services/api';
-import { ChevronDownIcon, FunnelIcon, PlusIcon, EyeIcon, ClockIcon, TrashIcon, UserCircleIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, QueueListIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, FunnelIcon, PlusIcon, EyeIcon, ClockIcon, TrashIcon, XMarkIcon, UserCircleIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, QueueListIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Menu, Switch } from '@headlessui/react';
 import ManualTimeEntryModal from '../components/ManualTimeEntryModal';
+import TimeEditNoteModal from '../components/TimeEditNoteModal';
+import ViewNoteModal from '../components/NoteViewModal';
 import { startOfDay, endOfDay } from 'date-fns';
 
 const Timesheet = ({ darkMode }) => {
@@ -27,56 +29,240 @@ const Timesheet = ({ darkMode }) => {
     setEditingCell({ dateStr, employeeId, field });
   };
   const getInitialDateRange = () => {
-  const saved = sessionStorage.getItem('dateRange');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return {
-        startDate: new Date(parsed.startDate),
-        endDate: new Date(parsed.endDate),
-      };
-    } catch (e) {
-      console.error('Invalid saved date range:', e);
+    const saved = sessionStorage.getItem('dateRange');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          startDate: new Date(parsed.startDate),
+          endDate: new Date(parsed.endDate),
+        };
+      } catch (e) {
+        console.error('Invalid saved date range:', e);
+      }
     }
-  }
-  return {
-    startDate: startOfDay(new Date()),
-    endDate: endOfDay(new Date()),
+    return {
+      startDate: startOfDay(new Date()),
+      endDate: endOfDay(new Date()),
+    };
   };
-};
-const handleClearField = (dateStr, employeeId, field) => {
-  const updatedRecords = { ...timeRecords };
+  const handleClearField = (dateStr, employeeId, field) => {
+    const updatedRecords = { ...timeRecords };
 
-  // Ensure field exists for the employee and date
-  if (updatedRecords[dateStr] && updatedRecords[dateStr][employeeId]) {
-    updatedRecords[dateStr][employeeId][field] = null;
+    // Ensure field exists for the employee and date
+    if (updatedRecords[dateStr] && updatedRecords[dateStr][employeeId]) {
+      updatedRecords[dateStr][employeeId][field] = null;
 
-    // Optionally clear duration and overtime if clockIn/Out is cleared
-    if (['clockIn', 'clockOut'].includes(field)) {
-      updatedRecords[dateStr][employeeId].duration = null;
-      updatedRecords[dateStr][employeeId].overtime = null;
+      // Optionally clear duration and overtime if clockIn/Out is cleared
+      if (['clockIn', 'clockOut'].includes(field)) {
+        updatedRecords[dateStr][employeeId].duration = null;
+        updatedRecords[dateStr][employeeId].overtime = null;
+      }
+
+      // Update state with the cleared field
+      setTimeRecords(updatedRecords);
+
+      // Trigger saving changes to the database after state has been updated
+      setEditingCell({ dateStr, employeeId, field }); // Set the editing context
     }
-
-    // Update state with the cleared field
-    setTimeRecords(updatedRecords);
-
-    // Trigger saving changes to the database after state has been updated
-    setEditingCell({ dateStr, employeeId, field }); // Set the editing context
-  }
-};
-
-
-
-const [dateRange, setDateRange] = useState(getInitialDateRange);
-
-useEffect(() => {
-  sessionStorage.setItem('dateRange', JSON.stringify({
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
-  }));
-}, [dateRange]);
-
+  };
   
+  // Handle saving changes when editing is complete
+  const handleEditEnd = async () => {
+    if (!editingCell) return;
+    
+    const { dateStr, employeeId, field } = editingCell;
+    const record = timeRecords[dateStr]?.[employeeId];
+    
+    if (!record) {
+      setEditingCell(null);
+      return;
+    }
+    
+    if (record && record.id) {
+      try {
+        // Build a minimal payload
+        const updateData = {};
+
+        // Map field to correct DB key
+        const fieldMap = {
+          clockIn: 'clockInTime',
+          clockOut: 'clockOutTime',
+          breakStart: 'breakStartTime',
+          breakEnd: 'breakEndTime',
+          duration: 'duration',
+          overtime: 'overtime',
+        };
+
+        const apiField = fieldMap[field];
+
+        if (apiField) {
+          updateData[apiField] = record[field] ?? null; // Explicitly set null
+          
+          // If this is a time field (not duration/overtime), prompt for a note
+          if (['clockInTime', 'clockOutTime', 'breakStartTime', 'breakEndTime'].includes(apiField)) {
+            // Get the original time value for reference
+            const fieldMap = {
+              clockIn: 'clockInTime',
+              clockOut: 'clockOutTime',
+              breakStart: 'breakStartTime',
+              breakEnd: 'breakEndTime',
+              duration: 'duration',
+              overtime: 'overtime',
+            };
+            
+            const apiField = fieldMap[field];
+            let originalTimeValue = '-';
+            if (apiField && record[apiField]) {
+              originalTimeValue = formatTime(record[apiField]);
+            }
+            
+            const defaultNote = `Original ${field.charAt(0).toUpperCase() + field.slice(1)} time: ${originalTimeValue}`;
+            const noteField = `${field}Note`;
+            
+            // Save both the new time value and the default note immediately
+            const updateDataWithNote = {
+              [apiField]: record[field] ?? null,
+              [noteField]: defaultNote,
+            };
+            
+            await updateTimeRecord(selectedCompany.id, record.id, updateDataWithNote);
+            console.log(`Updated ${apiField} and added default ${noteField} for employee ${employeeId} on ${dateStr}`);
+            
+            // Open the note modal with the default note pre-filled
+            openNoteModal(dateStr, employeeId, field, defaultNote);
+            
+            setEditingCell(null);
+            return; // Exit early as we'll handle the note separately
+          }
+        }
+
+        // Optional: send duration/overtime only when they were edited directly
+        if (field === 'duration' || field === 'overtime') {
+          updateData.duration = record.duration;
+          updateData.overtime = record.overtime;
+        }
+
+        // Now send only the changed field
+        await updateTimeRecord(selectedCompany.id, record.id, updateData);
+        console.log(`Updated ${apiField} for employee ${employeeId} on ${dateStr}`);
+      } catch (error) {
+        console.error('Error updating time record:', error);
+      }
+    } else {
+      // For records without an ID, use the old saveTimeRecord method
+      saveTimeRecord(dateStr, employeeId);
+    }
+    
+    setEditingCell(null);
+  };
+  
+  // Save the time record to the database
+  const saveTimeRecord = (dateStr, employeeId) => {
+    const record = timeRecords[dateStr]?.[employeeId];
+    if (!record) return;
+    
+    // If the record has an ID, update it; otherwise create a new one
+    if (record.id) {
+      // Prepare data for update
+      const updateData = {
+        clockInTime: record.clockIn,
+        clockOutTime: record.clockOut,
+        breakStartTime: record.breakStart,
+        breakEndTime: record.breakEnd,
+        clockInNote: record.clockInNote,
+        clockOutNote: record.clockOutNote,
+        breakStartNote: record.breakStartNote,
+        breakEndNote: record.breakEndNote,
+        duration: record.duration,
+        overtime: record.overtime
+      };
+      
+      // Remove null or undefined values
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === null || updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+      
+      // Update the record
+      updateTimeRecord(selectedCompany.id, record.id, updateData)
+        .catch(error => console.error('Error updating time record:', error));
+    } else {
+      // Create a new record
+      // This would typically be handled by the ManualTimeEntryModal
+      console.warn('Creating new time records directly is not implemented');
+    }
+  };
+
+
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteModalData, setNoteModalData] = useState({
+    dateStr: '',
+    employeeId: null,
+    field: '',
+    originalTime: ''
+  });
+
+  const openImagePreview = (url) => {
+    setPreviewImageUrl(url); // Adds modal behavior
+  };
+
+  const closeImagePreview = () => {
+    setPreviewImageUrl(null);
+  };
+  
+  const openNoteModal = (dateStr, employeeId, field, originalTime) => {
+    setNoteModalData({
+      dateStr,
+      employeeId,
+      field,
+      originalTime
+    });
+    setIsNoteModalOpen(true);
+  };
+  
+  const closeNoteModal = () => {
+    setIsNoteModalOpen(false);
+  };
+  
+  const saveTimeEditNote = (note) => {
+    const { dateStr, employeeId, field } = noteModalData;
+    const updatedRecords = { ...timeRecords };
+    
+    if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
+    if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
+    
+    // Add note to the appropriate field
+    const noteField = `${field}Note`;
+    updatedRecords[dateStr][employeeId][noteField] = note;
+    
+    setTimeRecords(updatedRecords);
+    
+    // Save the note to the database
+    if (updatedRecords[dateStr][employeeId].id) {
+      const updateData = {
+        [noteField]: note
+      };
+      
+      updateTimeRecord(selectedCompany.id, updatedRecords[dateStr][employeeId].id, updateData)
+        .catch(error => console.error('Error saving time edit note:', error));
+    }
+  };
+
+
+
+  const [dateRange, setDateRange] = useState(getInitialDateRange);
+
+  useEffect(() => {
+    sessionStorage.setItem('dateRange', JSON.stringify({
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+    }));
+  }, [dateRange]);
+
+
   const [isMainOutletDropdownOpen, setIsMainOutletDropdownOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null);
   const [filters, setFilters] = useState({
@@ -89,11 +275,10 @@ useEffect(() => {
   const [viewMode, setViewMode] = useState('daily'); // 'daily' or 'employee'
   const [showTotalsOnly, setShowTotalsOnly] = useState(false); // Track if only totals should be shown
   const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false); // State for manual entry modal
+  const [isNoteViewOpen, setIsNoteViewOpen] = useState(false);
+  const [viewNoteText, setViewNoteText] = useState('');
 
-  const openImagePreview = (imgUrl) => {
-    // simplest: open in a new tab
-    window.open(imgUrl, '_blank');
-  };
+
 
   // Handle click outside of search field
   useEffect(() => {
@@ -124,7 +309,7 @@ useEffect(() => {
     overtime: false,
     cost: true
   });
-  
+
   // Load from localStorage on first render
   useEffect(() => {
     const savedColumns = localStorage.getItem('visibleColumns');
@@ -154,14 +339,14 @@ useEffect(() => {
     const updatedRecords = { ...timeRecords };
     if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
     if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
-  
+
     updatedRecords[dateStr][employeeId][field] = null; // Ensure UI data is null
     setEditingCell({ dateStr, employeeId, field });
     setTimeRecords(updatedRecords);
   };
-  
-  
-  
+
+
+
 
   const weekDays = getDaysInRange();
 
@@ -171,7 +356,7 @@ useEffect(() => {
     if (!scheduleComparison[dateStr] || !scheduleComparison[dateStr][employeeId]) {
       return 'bg-transparent';
     }
-    
+
     // Use the schedule comparison data that's already fetched
     const comparison = scheduleComparison[dateStr][employeeId];
     let color = 'transparent';
@@ -459,7 +644,7 @@ useEffect(() => {
   // Handle editing of time fields
   const handleTimeChange = (e, dateStr, employeeId, field) => {
     let timeValue = e.target.value;
-    
+
     // Format the input if it doesn't include a colon
     // This handles cases like "1500" and converts to "15:00"
     if (timeValue && !timeValue.includes(':') && timeValue.length >= 3) {
@@ -468,23 +653,23 @@ useEffect(() => {
       const minutes = timeValue.substring(timeValue.length - 2);
       timeValue = `${hours}:${minutes}`;
     }
-  
+
     // ✅ Block invalid input early
     if (!timeValue || !timeValue.includes(':')) return;
-  
+
     const [hours, minutes] = timeValue.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes)) return;
-    
+
     // Validate hours and minutes are within valid ranges
     if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return;
-  
+
     // ✅ Defensive copy of records
     const updatedRecords = { ...timeRecords };
     if (!updatedRecords[dateStr]) updatedRecords[dateStr] = {};
     if (!updatedRecords[dateStr][employeeId]) updatedRecords[dateStr][employeeId] = {};
-  
+
     const existingRaw = updatedRecords[dateStr][employeeId][field];
-  
+
     let baseDate;
     try {
       baseDate = existingRaw && typeof existingRaw === 'string' && existingRaw.includes('T')
@@ -494,16 +679,16 @@ useEffect(() => {
       console.error('parseISO error:', err, 'Value:', existingRaw);
       baseDate = new Date(); // Safe fallback
     }
-  
+
     if (!isValid(baseDate)) baseDate = new Date();
-  
+
     // ✅ Apply new time
     // Add Z suffix to indicate UTC time, matching the format used in ManualTimeEntryModal
     const localTimeStr = `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`;
     updatedRecords[dateStr][employeeId][field] = localTimeStr;
 
 
-  
+
     // ✅ Recalculate duration and overtime
     if (['clockIn', 'clockOut', 'breakStart', 'breakEnd'].includes(field)) {
       const record = updatedRecords[dateStr][employeeId];
@@ -514,7 +699,7 @@ useEffect(() => {
           const clockOut = parseISO(record.clockOut);
           const breakStart = parseISO(record.breakStart);
           const breakEnd = parseISO(record.breakEnd);
-      
+
           if (isValid(clockIn) && isValid(clockOut) && isValid(breakStart) && isValid(breakEnd)) {
             const workMinutes = (clockOut - clockIn) / 60000 - (breakEnd - breakStart) / 60000;
             record.duration = (workMinutes / 60).toFixed(2);
@@ -525,25 +710,53 @@ useEffect(() => {
         console.warn('Duration/overtime calculation skipped due to invalid data:', e);
       }
     }
-    
+
     // Set the editing cell so handleEditEnd knows which record to save
     setEditingCell({ dateStr, employeeId, field });
-  
+
     setTimeRecords(updatedRecords);
   };
-  
+
   // Function to handle blur event on time inputs
   const handleTimeBlur = () => {
     // Call handleEditEnd to save changes to the database
     handleEditEnd();
   };
-  
+
   // Add a function to handle the blur event (when input loses focus)
   const handleTimeInputBlur = () => {
     // Call handleEditEnd to save changes to the database
     handleEditEnd();
   };
   
+  // Check if a time field has a note
+  const hasNote = (dateStr, employeeId, field) => {
+    const noteField = `${field}Note`;
+    return !!timeRecords[dateStr]?.[employeeId]?.[noteField];
+  };
+  
+  // Get the note for a time field
+  const getNote = (dateStr, employeeId, field) => {
+    const noteField = `${field}Note`;
+    return timeRecords[dateStr]?.[employeeId]?.[noteField] || '';
+  };
+  
+  // Render a note icon if a note exists for this field
+  const renderNoteIcon = (dateStr, employeeId, field) => {
+    if (hasNote(dateStr, employeeId, field)) {
+      return (
+        <div className="relative inline-block ml-1">
+          <PencilSquareIcon 
+            className="h-4 w-4 text-amber-500 cursor-pointer" 
+            title="View note"
+            onClick={() => alert(getNote(dateStr, employeeId, field))}
+          />
+        </div>
+      );
+    }
+    return null;
+  };
+
 
   // Handle direct editing of duration field
   const handleDurationChange = (e, dateStr, employeeId) => {
@@ -558,62 +771,20 @@ useEffect(() => {
 
     // Set the editing cell so handleEditEnd knows which record to save
     setEditingCell({ dateStr, employeeId, field: 'duration' });
-    
+
     setTimeRecords(updatedRecords);
   };
-  
+
   // Add a function to handle the blur event for duration inputs
   const handleDurationBlur = (dateStr, employeeId) => {
     // Call handleEditEnd to save changes to the database
     handleEditEnd();
   };
 
-  const handleEditEnd = async () => {
-    if (editingCell) {
-      const { dateStr, employeeId, field } = editingCell;
-      const record = timeRecords[dateStr]?.[employeeId];
-  
-      if (record && record.id) {
-        try {
-          // Build a minimal payload
-          const updateData = {};
-  
-          // Map field to correct DB key
-          const fieldMap = {
-            clockIn: 'clockInTime',
-            clockOut: 'clockOutTime',
-            breakStart: 'breakStartTime',
-            breakEnd: 'breakEndTime',
-            duration: 'duration',
-            overtime: 'overtime',
-          };
-  
-          const apiField = fieldMap[field];
-  
-          if (apiField) {
-            updateData[apiField] = record[field] ?? null; // Explicitly set null
-          }
-  
-          // Optional: send duration/overtime only when they were edited directly
-          if (field === 'duration' || field === 'overtime') {
-            updateData.duration = record.duration;
-            updateData.overtime = record.overtime;
-          }
-  
-          // ✅ Now send only the changed field
-          await updateTimeRecord(selectedCompany.id, record.id, updateData);
-          console.log(`Updated ${apiField} for employee ${employeeId} on ${dateStr}`);
-        } catch (error) {
-          console.error('Error updating time record:', error);
-        }
-      }
-    }
-  
-    setEditingCell(null);
-  };
-  
-  
-  
+  // The handleEditEnd function has been merged and moved up in the file
+
+
+
 
   // Handle click outside of dropdowns
   useEffect(() => {
@@ -681,7 +852,7 @@ useEffect(() => {
       return updated;
     });
   };
-  
+
 
   const handleFilterClick = (filterType) => {
     setActiveFilter(activeFilter === filterType ? null : filterType);
@@ -1162,16 +1333,16 @@ useEffect(() => {
               {visibleColumns.login && (
                 <th className="px-4 py-2 text-left">Clock In</th>
               )}
-              {visibleColumns.logout && (
-                <th className="px-4 py-2 text-left">Clock Out</th>
-              )}
               {visibleColumns.breakStart && (
                 <th className="px-4 py-2 text-left">Break Start</th>
               )}
               {visibleColumns.breakEnd && (
                 <th className="px-4 py-2 text-left">Break End</th>
               )}
-              {visibleColumns.duration && (
+              {visibleColumns.logout && (
+                <th className="px-4 py-2 text-left">Clock Out</th>
+              )}
+                            {visibleColumns.duration && (
                 <th className="px-4 py-2 text-right">Worked</th>
               )}
               {visibleColumns.overtime && (
@@ -1302,112 +1473,62 @@ useEffect(() => {
 
                           {/* Time record columns - editable */}
                           {visibleColumns.login && (
-  <td className="px-4 py-3 text-sm">
-    {editingCell?.dateStr === dateStr &&
-    editingCell?.employeeId === employee.id &&
-    editingCell?.field === 'clockIn' ? (
-      <div className="flex items-center space-x-2">
-        <input
-          type="time"
-          className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
-          value={formatTime(record.clockIn)}
-          onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockIn')}
-          onBlur={handleEditEnd}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleEditEnd();
-          }}
-          autoFocus
-        />
-        <TrashIcon
-          className="h-5 w-5 text-red-500 cursor-pointer hover:text-red-700"
-          onClick={() => handleDeleteTimeField(dateStr, employee.id, 'clockIn')}
-        />
-      </div>
-    ) : (
-      <div
-        className="cursor-pointer flex items-center hover:text-blue-500 space-x-2"
-        onClick={() => handleEditStart(dateStr, employee.id, 'clockIn')}
-      >
-        <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
-          <ClockIcon className="h-4 w-4" />
-          <span>{formatTime(record.clockIn)}</span>
-        </div>
-        {record.img1 && (
-          <UserCircleIcon
-            className="h-5 w-5 text-emerald-500 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent triggering the clock-in edit
-              openImagePreview(record.img1);
-            }}
-          />
-        )}
-      </div>
-    )}
-  </td>
-)}
-
-
-
-{visibleColumns.logout && (
-  <td className="px-4 py-3 text-sm">
-    {editingCell?.dateStr === dateStr &&
-    editingCell?.employeeId === employee.id &&
-    editingCell?.field === 'clockOut' ? (
-      <div className="flex items-center space-x-2">
-        <input
-          type="time"
-          className={`w-24 px-2 py-1 rounded border ${
-            darkMode
-              ? 'bg-slate-700 border-slate-600 text-slate-200'
-              : 'bg-white border-slate-300 text-slate-700'
-          }`}
-          value={record.clockOut ? formatTime(record.clockOut) : ''}
-          onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
-          onBlur={handleEditEnd}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleEditEnd(); // Trigger save on Enter key press
-            }
-          }}
-          autoFocus
-        />
-        <TrashIcon
-          className="h-5 w-5 text-red-500 cursor-pointer"
-          onClick={() => handleClearField(dateStr, employee.id, 'clockOut')}
-        />
-      </div>
-    ) : (
-      <div
-        className="cursor-pointer flex items-center hover:text-blue-500"
-        onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
-      >
-        <div
-          className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(
-            dateStr,
-            employee.id,
-            'clockOut'
-          )}`}
-        >
-          <ClockIcon className="h-4 w-4" />
-          <span>{formatTime(record.clockOut)}</span>
-        </div>
-        {record.img2 && (
-          <UserCircleIcon
-            className="h-5 w-5 text-emerald-500 hover:text-blue-500 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent triggering the clock-out edit
-              openImagePreview(record.img2);
-            }}
-          />
-        )}
-      </div>
-    )}
-  </td>
-)}
-
-
-
-
+                            <td className="px-4 py-3 text-sm">
+                              {editingCell?.dateStr === dateStr &&
+                                editingCell?.employeeId === employee.id &&
+                                editingCell?.field === 'clockIn' ? (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="time"
+                                    className={`w-24 px-2 py-1 rounded border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-700'}`}
+                                    value={formatTime(record.clockIn)}
+                                    onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockIn')}
+                                    onBlur={handleEditEnd}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleEditEnd();
+                                    }}
+                                    autoFocus
+                                  />
+                                  <TrashIcon
+                                    className="h-5 w-5 text-red-500 cursor-pointer hover:text-red-700"
+                                    onClick={() => handleDeleteTimeField(dateStr, employee.id, 'clockIn')}
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  className="cursor-pointer flex items-center hover:text-blue-500 space-x-2"
+                                  onClick={() => handleEditStart(dateStr, employee.id, 'clockIn')}
+                                >
+                                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
+                                    <ClockIcon className="h-4 w-4" />
+                                    <span>{formatTime(record.clockIn)}</span>
+                                  </div>
+                                  {record.img1 && (
+                                    <UserCircleIcon
+                                      className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openImagePreview(record.img1);
+                                      }}
+                                    />
+                                  )}
+                                  {record.clockInNote && (
+                                      <PencilSquareIcon 
+                                        className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                        title={record.clockInNote}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setViewNoteText(record.clockInNote);
+                                          setIsNoteViewOpen(true);
+                                        }}
+                                        
+                                      />
+                                    )}
+                                </div>
+                              )}
+                            </td>
+                          )}
+                          
                           {visibleColumns.breakStart && (
                             <td className="px-4 py-3 text-sm">
                               {editingCell?.dateStr === dateStr &&
@@ -1437,17 +1558,28 @@ useEffect(() => {
                                       <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakStart)}</span>
-                                      </div>
-                                      {/* Display img if exists */}
-                                        {record[`img${3 + (index * 2)}`] && (
-                                          <UserCircleIcon
-                                            className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                        {record.breakStartNote && (
+                                          <PencilSquareIcon 
+                                            className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                            title={record.breakStartNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              openImagePreview(record[`img${3 + (index * 2)}`]);
+                                              setViewNoteText(record.clockInNote);
+                                              setIsNoteViewOpen(true);
                                             }}
                                           />
                                         )}
+                                      </div>
+                                      {/* Display img if exists */}
+                                      {record[`img${3 + (index * 2)}`] && (
+                                        <UserCircleIcon
+                                          className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openImagePreview(record[`img${3 + (index * 2)}`]);
+                                          }}
+                                        />
+                                      )}
                                     </div>
                                   )}
 
@@ -1516,17 +1648,28 @@ useEffect(() => {
                                       <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakEnd)}</span>
-                                      </div>
-                                      {/* Display img if exists */}
-                                      {record[`img${4 + (index * 2)}`] && (
-                                          <UserCircleIcon
-                                            className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                        {record.breakEndNote && (
+                                          <PencilSquareIcon 
+                                            className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                            title={record.breakEndNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              openImagePreview(record[`img${4 + (index * 2)}`]);
+                                              setViewNoteText(record.clockInNote);
+                                              setIsNoteViewOpen(true);
                                             }}
                                           />
                                         )}
+                                      </div>
+                                      {/* Display img if exists */}
+                                      {record[`img${4 + (index * 2)}`] && (
+                                        <UserCircleIcon
+                                          className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openImagePreview(record[`img${4 + (index * 2)}`]);
+                                          }}
+                                        />
+                                      )}
                                     </div>
                                   )}
 
@@ -1561,6 +1704,73 @@ useEffect(() => {
                                       </div>
                                     )
                                   ))}
+                                </div>
+                              )}
+                            </td>
+                          )}
+
+{visibleColumns.logout && (
+                            <td className="px-4 py-3 text-sm">
+                              {editingCell?.dateStr === dateStr &&
+                                editingCell?.employeeId === employee.id &&
+                                editingCell?.field === 'clockOut' ? (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="time"
+                                    className={`w-24 px-2 py-1 rounded border ${darkMode
+                                        ? 'bg-slate-700 border-slate-600 text-slate-200'
+                                        : 'bg-white border-slate-300 text-slate-700'
+                                      }`}
+                                    value={record.clockOut ? formatTime(record.clockOut) : ''}
+                                    onChange={(e) => handleTimeChange(e, dateStr, employee.id, 'clockOut')}
+                                    onBlur={handleEditEnd}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleEditEnd(); // Trigger save on Enter key press
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                  <TrashIcon
+                                    className="h-5 w-5 text-red-500 cursor-pointer"
+                                    onClick={() => handleClearField(dateStr, employee.id, 'clockOut')}
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  className="cursor-pointer flex items-center hover:text-blue-500"
+                                  onClick={() => handleEditStart(dateStr, employee.id, 'clockOut')}
+                                >
+                                  <div
+                                    className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(
+                                      dateStr,
+                                      employee.id,
+                                      'clockOut'
+                                    )}`}
+                                  >
+                                    <ClockIcon className="h-4 w-4" />
+                                    <span>{formatTime(record.clockOut)}</span>
+                                    {record.clockOutNote && (
+                                      <PencilSquareIcon 
+                                        className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                        title={record.clockOutNote}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setViewNoteText(record.clockInNote);
+                                          setIsNoteViewOpen(true);
+                                        }}
+                                      />
+                                    )}
+                                  </div>
+                                  {record.img2 && (
+                                    <UserCircleIcon
+                                      className="h-5 w-5 text-emerald-500 hover:text-blue-500 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent triggering the clock-out edit
+                                        openImagePreview(record.img2);
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               )}
                             </td>
@@ -1622,10 +1832,10 @@ useEffect(() => {
                   const record = timeRecords[dateStr]?.[employee.id];
                   if (!record) return false;
                   return true;
-                });                
-              
+                });
+
                 if (!hasRecords) return null;
-              
+
                 return (
                   <React.Fragment key={employee.id}>
                     {/* Employee header row with totals */}
@@ -1633,7 +1843,7 @@ useEffect(() => {
                       <td className="px-4 py-3 font-medium">
                         <span className="font-semibold">{`${employee.firstName} ${employee.lastName}`}</span>
                       </td>
-              
+
                       {/* Empty cells for other columns */}
                       {visibleColumns.name && <td className="px-4 py-3"></td>}
                       {visibleColumns.section && <td className="px-4 py-3"></td>}
@@ -1644,7 +1854,7 @@ useEffect(() => {
                       {visibleColumns.logout && <td className="px-4 py-3"></td>}
                       {visibleColumns.breakStart && <td className="px-4 py-3"></td>}
                       {visibleColumns.breakEnd && <td className="px-4 py-3"></td>}
-              
+
                       {/* Totals */}
                       {visibleColumns.duration && (
                         <td className="px-4 py-3 text-right">
@@ -1662,14 +1872,14 @@ useEffect(() => {
                         </td>
                       )}
                     </tr>
-              
+
                     {/* Days for this employee */}
                     {!showTotalsOnly && weekDays.map((day, index) => {
                       const dateStr = format(day.fullDate, 'yyyy-MM-dd');
                       const record = timeRecords[dateStr]?.[employee.id];
-              
+
                       if (!record) return null;
-              
+
                       return (
                         <tr key={`${employee.id}-${index}`} className={`${darkMode ? 'border-t border-slate-700/50 hover:bg-slate-700/30' : 'border-t border-slate-200/50 hover:bg-slate-100/50'}`}>
                           <td className="px-4 py-3">
@@ -1681,9 +1891,7 @@ useEffect(() => {
 
                           {/* Name column */}
                           {visibleColumns.name && (
-                            <td className="px-4 py-3 text-sm">
-                              {`${employee.firstName} ${employee.lastName}`}
-                            </td>
+                            <td className="px-4 py-3 text-sm font-medium">{`${employee.firstName} ${employee.lastName} - ${employee.employeeNumber || ''}`}</td>
                           )}
 
                           {/* Section column */}
@@ -1736,6 +1944,17 @@ useEffect(() => {
                                   <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'clockOut')}`}>
                                     <ClockIcon className="h-4 w-4" />
                                     <span>{formatTime(record.clockIn)}</span>
+                                    {record.clockInNote && (
+                                      <PencilSquareIcon 
+                                        className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                        title={record.clockInNote}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setViewNoteText(record.clockInNote);
+                                          setIsNoteViewOpen(true);
+                                        }}
+                                      />
+                                    )}
                                   </div>
                                   {record.img1 && (
                                     <UserCircleIcon
@@ -1815,17 +2034,28 @@ useEffect(() => {
                                       <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakStart)}</span>
-                                      </div>
-                                      {/* Display img if exists */}
-                                        {record[`img${3 + (index * 2)}`] && (
-                                          <UserCircleIcon
-                                            className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                        {record.breakStartNote && (
+                                          <PencilSquareIcon 
+                                            className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                            title={record.breakStartNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              openImagePreview(record[`img${3 + (index * 2)}`]);
+                                              setViewNoteText(record.clockInNote);
+                                              setIsNoteViewOpen(true);
                                             }}
                                           />
                                         )}
+                                      </div>
+                                      {/* Display img if exists */}
+                                      {record[`img${3 + (index * 2)}`] && (
+                                        <UserCircleIcon
+                                          className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openImagePreview(record[`img${3 + (index * 2)}`]);
+                                          }}
+                                        />
+                                      )}
                                     </div>
                                   )}
 
@@ -1884,17 +2114,28 @@ useEffect(() => {
                                       <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${getRibbonClass(dateStr, employee.id, 'breakEnd')}`}>
                                         <ClockIcon className="h-4 w-4" />
                                         <span>{formatTime(record.breakEnd)}</span>
-                                      </div>
-                                      {/* Display img if exists */}
-                                      {record[`img${4 + (index * 2)}`] && (
-                                          <UserCircleIcon
-                                            className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                        {record.breakEndNote && (
+                                          <PencilSquareIcon
+                                            className="h-5 w-5 text-amber-500 ml-1 cursor-pointer" 
+                                            title={record.breakEndNote}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              openImagePreview(record[`img${4 + (index * 2)}`]);
+                                              setViewNoteText(record.clockInNote);
+                                              setIsNoteViewOpen(true);
                                             }}
                                           />
                                         )}
+                                      </div>
+                                      {/* Display img if exists */}
+                                      {record[`img${4 + (index * 2)}`] && (
+                                        <UserCircleIcon
+                                          className="h-5 w-5 text-emerald-500 cursor-pointer"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openImagePreview(record[`img${4 + (index * 2)}`]);
+                                          }}
+                                        />
+                                      )}
                                     </div>
                                   )}
 
@@ -1979,6 +2220,32 @@ useEffect(() => {
         </table>
       </div>
 
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+          onClick={closeImagePreview}
+        >
+          <div className="relative">
+            <img
+              src={previewImageUrl}
+              alt="Preview"
+              style={{
+                maxWidth: '90vw', // Maximum width to prevent it from being too large
+                maxHeight: '90vh', // Maximum height to ensure the image does not scroll
+                objectFit: 'contain', // Keeps the aspect ratio of the image
+              }}
+              className="rounded-lg" // Apply rounded edges to the image
+            />
+            <button
+              onClick={closeImagePreview}
+              className="absolute top-2 right-2 p-2 rounded-full bg-slate-700 bg-opacity-30 hover:bg-opacity-50"
+            >
+              <XMarkIcon className="h-6 w-6 text-white" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Manual Time Entry Modal */}
       <ManualTimeEntryModal
         isOpen={isManualEntryModalOpen}
@@ -1991,6 +2258,25 @@ useEffect(() => {
         isDateRange={dateRange.startDate !== dateRange.endDate}
         selectedOutlet={selectedOutlet}
       />
+
+      {/* Time Edit Note Modal */}
+      <TimeEditNoteModal
+        isOpen={isNoteModalOpen}
+        onClose={closeNoteModal}
+        onSave={saveTimeEditNote}
+        originalTime={noteModalData.originalTime}
+        fieldName={noteModalData.field}
+        darkMode={darkMode}
+      />
+
+
+<ViewNoteModal
+  isOpen={isNoteViewOpen}
+  noteText={viewNoteText}
+  onClose={() => setIsNoteViewOpen(false)}
+  darkMode={darkMode}
+/>
+
     </div>
   );
 };

@@ -257,7 +257,7 @@ export default function Devices({ darkMode }) {
                     <select
                       value={formData.outlet}
                       onChange={(e) => setFormData({ ...formData, outlet: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 border-slate-200"
+                      className="w-full px-3 py-2 rounded-lg border dark:border-slate-600 cursor-pointer dark:bg-slate-700 dark:text-slate-100 border-slate-200"
                       required
                     >
                       <option value="">Select an outlet</option>
@@ -283,9 +283,9 @@ export default function Devices({ darkMode }) {
                       type="checkbox"
                       checked={formData.pinRequired}
                       onChange={(e) => setFormData({ ...formData, pinRequired: e.target.checked })}
-                      className="form-checkbox h-5 w-5 text-slate-600 dark:text-slate-100 border dark:border-slate-600"
+                      className="form-checkbox h-5 w-5 cursor-pointer text-slate-600 dark:text-slate-100 border dark:border-slate-600"
                     />
-                    <span className="ml-2 block text-sm font-medium dark:text-slate-300 text-slate-700">Use Pin Code</span>
+                    <span className="ml-2 block text-sm cursor-pointer font-medium dark:text-slate-300 text-slate-700">Use Pin Code</span>
                   </label>
                 </div>
               </div>
